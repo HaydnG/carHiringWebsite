@@ -18,7 +18,7 @@ func main(){
 	flag.Parse()
 
 	if *buildAll{
-		cmd:= exec.Command("ng", "build", "--prod")
+		cmd:= exec.Command("ng", "build", "--prod", "--output-path=../public")
 		cmd.Dir = "./Frontend"
 
 		a, err := cmd.Output()
@@ -30,7 +30,7 @@ func main(){
 	}
 
 	//Serve the website files
-	fileServe := http.FileServer(http.Dir("./Frontend/dist/Frontend"))
+	fileServe := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fileServe)
 
 
