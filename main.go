@@ -19,12 +19,11 @@ func main(){
 
 	if *buildAll{
 		cmd:= exec.Command("ng", "build", "--prod", "--output-path=../public")
-		cmd.Dir = "./Frontend"
+		cmd.Dir = "./carHiringWebsite-Frontend"
 
 		a, err := cmd.Output()
 		if err !=nil{
-			fmt.Println(err)
-
+			log.Fatal(err)
 		}
 		fmt.Println(string(a))
 	}
