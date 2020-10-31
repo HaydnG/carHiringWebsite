@@ -74,10 +74,11 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	name := r.FormValue("name")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	dobString := r.FormValue("dob")
-	if len(email) == 0 || len(password) == 0 || len(dob) == 0{
+	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(name) == 0{
 		err = errors.New("incorrect parameters")
 		return
 	}
@@ -90,25 +91,14 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request){
 
 	dob := time.Unix(dobUnix, 0)
 
-
-	newUser := user.User{
-		ID:          0,
-		FullName:    "",
-		Email:       email,
-		CreatedAt:   time.Now(),
-		Password:    password,
-		AuthHash:    nil,
-		AuthSalt:    nil,
-		Blacklisted: false,
-		DOB:         dob,
-		Verified:    false,
-		Repeat:      false,
-	}
-
-	if !user.ValidateRegistration(newUser){
+	if !user.ValidateCredentials(email, password){
 		err = errors.New("user failed validation")
 		return
 	}
+
+	newUser := user.CreateUser(email, password, name, dob)
+
+
 
 
 

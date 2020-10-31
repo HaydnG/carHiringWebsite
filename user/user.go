@@ -1,6 +1,7 @@
 package user
 
 import (
+	"os/user"
 	"regexp"
 	"time"
 )
@@ -24,17 +25,17 @@ var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z
 
 
 
-func New(user User){
+func CreateUser(email, password, name string, dob time.Time) user.User{
 
 
 }
 
-func ValidateRegistration(user User) bool{
+func ValidateCredentials(email, password string) bool{
 
-	if !isEmailValid(user.Email){
+	if !isEmailValid(email){
 		return false
 	}
-	if !isPasswordValid(user.Password){
+	if !isPasswordValid(password){
 		return false
 	}
 
