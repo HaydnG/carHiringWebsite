@@ -8,17 +8,18 @@ import (
 
 var(
 	conn *sql.DB
+
 )
 
 func InitDB() error{
 
-	db, err := sql.Open("mysql", "interaction:root@tcp(localhost:3306)/test")
+	db, err := sql.Open("mysql", "interaction:pass@tcp(localhost:3306)/carrental")
 	if err != nil{
 		return err
 	}
 	conn = db
 
-	rows, err := conn.Query("SELECT * FROM USERS WHERE email = '$1'", "test@gmail.com")
+	rows, err := conn.Query("SELECT * FROM USERS WHERE email = ?", "test@gmail.com")
 	if err != nil{
 		return err
 	}
