@@ -1,8 +1,8 @@
 package db
 
 import (
+	"carHiringWebsite/data"
 	"database/sql"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -19,12 +19,7 @@ func InitDB() error{
 	}
 	conn = db
 
-	rows, err := conn.Query("SELECT * FROM USERS WHERE email = ?", "test@gmail.com")
-	if err != nil{
-		return err
-	}
-
-	fmt.Println(rows)
+	GetUser("test@gmail.com")
 
 	return nil
 }
@@ -32,3 +27,19 @@ func InitDB() error{
 func CloseDB() error{
 	return conn.Close()
 }
+
+
+func GetUser(email string) (data.User, error){
+	row := conn.QueryRow("SELECT * FROM USERS WHERE email = ?", email)
+
+	user := data.User{}
+
+	err := row.Scan(&user.ID,&user.FullName, &user.Email, &user.CreatedAt, &user.AuthHash, &user.AuthSalt, &user.Blacklisted, &user.DOB, &user.Verified, &user.Repeat)
+	if err != nil{
+		return data.User{}, err
+
+	}
+
+	return user, nil
+}
+
