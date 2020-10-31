@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"carHiringWebsite/db"
-	"carHiringWebsite/user"
+	"carHiringWebsite/userService"
+	"encoding/json"
 	"errors"
 	"flag"
 	"log"
@@ -12,9 +14,7 @@ import (
 	"time"
 )
 
-
-
-func main(){
+func main() {
 	var err error
 
 	buildAll := flag.Bool("buildall", false, "tells the webserver to rebuild the frontEnd")
@@ -22,19 +22,19 @@ func main(){
 	flag.Parse()
 
 	// Build front-end if param specified
-	if *buildAll{
-		cmd:= exec.Command("ng", "build", "--prod", "--output-path=../public")
+	if *buildAll {
+		cmd := exec.Command("ng", "build", "--prod", "--output-path=../public")
 		cmd.Dir = "./carHiringWebsite-Frontend"
 
 		_, err := cmd.Output()
-		if err !=nil{
+		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	// Initiate db connection
 	err = db.InitDB()
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -42,8 +42,7 @@ func main(){
 	fileServe := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fileServe)
 
-	http.HandleFunc("/user/register", RegistrationHandler)
-
+	http.HandleFunc("/userService/register", RegistrationHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -53,23 +52,22 @@ func main(){
 
 	//Close db connection
 	err = db.CloseDB()
-	if err != nil{
+	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-
-func RegistrationHandler(w http.ResponseWriter, r *http.Request){
+func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	defer func() {
-		if err != nil{
+		if err != nil {
 			log.Printf("RegistrationHandler error - err: %x", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
- 	}()
+	}()
 
-	if r.Method != http.MethodGet{
+	if r.Method != http.MethodGet {
 		err = errors.New("incorrect http method")
 		return
 	}
@@ -78,32 +76,28 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request){
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	dobString := r.FormValue("dob")
-	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(name) == 0{
+	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(name) == 0 {
 		err = errors.New("incorrect parameters")
 		return
 	}
 
 	dobUnix, err := strconv.ParseInt(dobString, 10, 64)
-	if err != nil{
+	if err != nil {
 		err = errors.New("error reading DOB")
 		return
 	}
 
 	dob := time.Unix(dobUnix, 0)
 
-	if !user.ValidateCredentials(email, password){
-		err = errors.New("user failed validation")
+	if !userService.ValidateCredentials(email, password) {
+		err = errors.New("userService failed validation")
 		return
 	}
 
-	newUser := user.CreateUser(email, password, name, dob)
+	newUser, err := userService.CreateUser(email, password, name, dob)
 
-
-
-
-
+	var buffer bytes.Buffer
+	json.NewEncoder(&buffer).Encode(&newUser)
+	w.Write(buffer.Bytes())
+	w.WriteHeader(http.StatusOK)
 }
-
-
-
-

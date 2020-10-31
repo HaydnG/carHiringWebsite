@@ -8,28 +8,30 @@ import (
 
 const saltSize = 16
 
-func Init(){
+func Init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
-func Get(salt []byte, password string) ([]byte, error){
+// Get generates a hash with the salt and password
+func Get(salt []byte, password string) ([]byte, error) {
 
 	hash := sha256.New()
 
 	salted := saltPassword(salt, password)
 
 	_, err := hash.Write(salted)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
-	return  hash.Sum(nil), nil
+	return hash.Sum(nil), nil
 }
 
-func New(password string) ([]byte, []byte, error){
+// New generates a hash and salt for the given password
+func New(password string) ([]byte, []byte, error) {
 
 	salt, err := generateSalt()
-	if err != nil{
+	if err != nil {
 		return nil, nil, err
 	}
 	authHash, err := Get(salt, password)
@@ -37,7 +39,7 @@ func New(password string) ([]byte, []byte, error){
 	return salt, authHash, err
 }
 
-func generateSalt() ([]byte, error){
+func generateSalt() ([]byte, error) {
 	salt := make([]byte, saltSize)
 
 	_, err := rand.Read(salt[:])
@@ -47,8 +49,6 @@ func generateSalt() ([]byte, error){
 	return salt, nil
 }
 
-func saltPassword(salt []byte, password string) []byte{
+func saltPassword(salt []byte, password string) []byte {
 	return append(salt, []byte(password)...)
 }
-
-
