@@ -33,7 +33,6 @@ func main(){
 	http.Handle("/", fileServe)
 
 
-
 	//Server operation
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
