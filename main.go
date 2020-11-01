@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"carHiringWebsite/db"
+	"carHiringWebsite/response"
 	"carHiringWebsite/userService"
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os/exec"
@@ -42,7 +44,9 @@ func main() {
 	fileServe := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fileServe)
 
+	//Service endpoints
 	http.HandleFunc("/userService/register", RegistrationHandler)
+	http.HandleFunc("/userService/login", LoginHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -62,7 +66,8 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("RegistrationHandler error - err: %x", err)
+			fmt.Printf("RegistrationHandler error - err: %v \n", err)
+			log.Printf("RegistrationHandler error - err: %v \n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -94,10 +99,63 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUser, err := userService.CreateUser(email, password, name, dob)
+	created, newUser, err := userService.CreateUser(email, password, name, dob)
+	if err != nil {
+		return
+	}
 
 	var buffer bytes.Buffer
-	json.NewEncoder(&buffer).Encode(&newUser)
+	encoder := json.NewEncoder(&buffer)
+
+	if !created {
+		encoder.Encode(response.DuplicateUser)
+		w.Write(buffer.Bytes())
+		return
+	}
+
+	encoder.Encode(&newUser)
 	w.Write(buffer.Bytes())
-	w.WriteHeader(http.StatusOK)
+}
+
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("LoginHandler error - err: %v \n", err)
+			log.Printf("LoginHandler error - err: %v \n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if len(email) == 0 || len(password) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	authUser, err := userService.Authenticate(email, password)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+
+	if authUser.SessionToken == "" {
+		encoder.Encode(response.IncorrectPassword)
+		w.Write(buffer.Bytes())
+		return
+	}
+
+	encoder.Encode(&authUser)
+	w.Write(buffer.Bytes())
+
 }

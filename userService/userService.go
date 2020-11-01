@@ -1,33 +1,65 @@
 package userService
 
 import (
+	"bytes"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/hash"
+	"database/sql"
 	"regexp"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+func Authenticate(email, password string) (*data.OutputUser, error) {
+
+	authUser, err := db.SelectUserByEmail(email)
+	if err != nil {
+		return &data.OutputUser{}, err
+	}
+
+	hash, err := hash.Get(authUser.AuthSalt, password)
+
+	if bytes.Compare(hash, authUser.AuthHash) != 0 {
+		return &data.OutputUser{}, nil
+	}
+
+	outputUser := data.NewOutputUser(authUser)
+	outputUser.SessionToken = uuid.New().String()
+
+	return outputUser, nil
+}
 
 var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-func CreateUser(email, password, name string, dob time.Time) (*data.User, error) {
+func CreateUser(email, password, name string, dob time.Time) (bool, *data.OutputUser, error) {
 
 	salt, hash, err := hash.New(password)
 	if err != nil {
-		return &data.User{}, err
+		return false, &data.OutputUser{}, err
+	}
+
+	_, err = db.SelectUserByEmail(email)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, &data.OutputUser{}, err
+		}
+	} else {
+		return false, &data.OutputUser{}, nil
 	}
 
 	userID, err := db.CreateUser(email, name, dob, salt, hash)
 	if err != nil {
-		return &data.User{}, err
+		return false, &data.OutputUser{}, err
 	}
 
 	newUser, err := db.SelectUserByID(userID)
 	if err != nil {
-		return &data.User{}, err
+		return false, &data.OutputUser{}, err
 	}
 
-	return newUser, nil
+	return true, data.NewOutputUser(newUser), nil
 }
 
 func ValidateCredentials(email, password string) bool {
