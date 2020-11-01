@@ -8,7 +8,7 @@ import (
 
 const saltSize = 16
 
-func Init() {
+func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
