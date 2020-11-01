@@ -9,7 +9,7 @@ import (
 
 type sessionStore struct {
 	sync.RWMutex
-	storeByID    map[uuid.UUID]*sessionBag
+	storeByID    map[string]*sessionBag
 	storeByEmail map[string]*sessionBag
 }
 
@@ -22,33 +22,35 @@ func (ss *sessionStore) Add(bag *sessionBag) {
 
 type sessionBag struct {
 	sync.RWMutex
-	token uuid.UUID
+	token string
 	user  data.User
 	bag   map[string]interface{}
 }
 
 var (
-	Sessions sessionStore
+	sessions sessionStore
 )
 
 func init() {
-	Sessions = sessionStore{
+	sessions = sessionStore{
 		RWMutex:      sync.RWMutex{},
-		storeByID:    make(map[uuid.UUID]*sessionBag),
+		storeByID:    make(map[string]*sessionBag),
 		storeByEmail: make(map[string]*sessionBag),
 	}
 }
 
-func NewSessionBag(user *data.User) {
+func New(user *data.User) string {
 	userCopy := *user
 
 	newBag := &sessionBag{
 		RWMutex: sync.RWMutex{},
-		token:   uuid.New(),
+		token:   uuid.New().String(),
 		user:    userCopy,
 		bag:     make(map[string]interface{}),
 	}
 
-	Sessions.Add(newBag)
+	sessions.Add(newBag)
+
+	return newBag.token
 
 }

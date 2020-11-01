@@ -5,11 +5,10 @@ import (
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/hash"
+	"carHiringWebsite/session"
 	"database/sql"
 	"regexp"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func Authenticate(email, password string) (*data.OutputUser, error) {
@@ -26,7 +25,7 @@ func Authenticate(email, password string) (*data.OutputUser, error) {
 	}
 
 	outputUser := data.NewOutputUser(authUser)
-	outputUser.SessionToken = uuid.New().String()
+	outputUser.SessionToken = session.New(authUser)
 
 	return outputUser, nil
 }
