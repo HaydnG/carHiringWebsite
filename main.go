@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
+	"carHiringWebsite/session"
 	"carHiringWebsite/userService"
 	"encoding/json"
 	"errors"
@@ -47,6 +48,7 @@ func main() {
 	//Service endpoints
 	http.HandleFunc("/userService/register", RegistrationHandler)
 	http.HandleFunc("/userService/login", LoginHandler)
+	http.HandleFunc("/userService/sessionCheck", SessionCheckHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -156,6 +158,50 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	encoder.Encode(&authUser)
+	w.Write(buffer.Bytes())
+
+}
+
+func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var token string
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("SessionCheckHandler error - err: %v \nsession: %v\n", err, token)
+			log.Printf("SessionCheckHandler error - err: %v \nsession: %v\n", err, token)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token = r.FormValue("token")
+
+	if len(token) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	if !session.ValidateToken(token) {
+		err = errors.New("invalid token")
+		return
+	}
+
+	bag := session.GetByToken(token)
+	if bag == nil {
+		err = errors.New("session not found or expired")
+		return
+	}
+
+	user := bag.GetUser()
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&user)
 	w.Write(buffer.Bytes())
 
 }
