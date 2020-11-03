@@ -6,17 +6,18 @@ import (
 )
 
 type User struct {
-	ID          int
-	FullName    string
-	Email       string
-	CreatedAt   time.Time
-	Password    string
-	AuthHash    []byte
-	AuthSalt    []byte
-	Blacklisted bool
-	DOB         time.Time
-	Verified    bool
-	Repeat      bool
+	ID           int
+	FullName     string
+	Email        string
+	CreatedAt    time.Time
+	Password     string
+	AuthHash     []byte
+	AuthSalt     []byte
+	Blacklisted  bool
+	DOB          time.Time
+	Verified     bool
+	Repeat       bool
+	SessionToken string
 }
 
 type timestamp struct {
@@ -41,12 +42,13 @@ func (t timestamp) MarshalJSON() ([]byte, error) {
 
 func NewOutputUser(u *User) *OutputUser {
 	return &OutputUser{
-		FullName:    u.FullName,
-		Email:       u.Email,
-		CreatedAt:   timestamp{u.CreatedAt},
-		Blacklisted: u.Blacklisted,
-		DOB:         timestamp{u.DOB},
-		Verified:    u.Verified,
-		Repeat:      u.Repeat,
+		FullName:     u.FullName,
+		Email:        u.Email,
+		CreatedAt:    timestamp{u.CreatedAt},
+		Blacklisted:  u.Blacklisted,
+		DOB:          timestamp{u.DOB},
+		Verified:     u.Verified,
+		Repeat:       u.Repeat,
+		SessionToken: u.SessionToken,
 	}
 }

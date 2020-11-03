@@ -7,27 +7,59 @@ import (
 	"carHiringWebsite/hash"
 	"carHiringWebsite/session"
 	"database/sql"
+	"errors"
 	"regexp"
 	"time"
 )
 
-func Authenticate(email, password string) (*data.OutputUser, error) {
+//func Logout(token string) (bool, error) {
 
-	authUser, err := db.SelectUserByEmail(email)
-	if err != nil {
-		return &data.OutputUser{}, err
+//}
+
+func ValidateSession(token string) (*data.OutputUser, error) {
+	if !session.ValidateToken(token) {
+		return &data.OutputUser{}, errors.New("invalid token")
+	}
+
+	bag, activeSession := session.GetByToken(token)
+	if bag == nil || !activeSession {
+		return &data.OutputUser{}, errors.New("session not found or expired")
+	}
+
+	user := bag.GetUser()
+	outputUser := data.NewOutputUser(user)
+
+	return outputUser, nil
+}
+
+func Authenticate(email, password string) (*data.OutputUser, bool, error) {
+	var authUser *data.User
+	var err error
+
+	bag, activeSession := session.GetByEmail(email)
+
+	if activeSession {
+		authUser = bag.GetUser()
+	} else {
+		authUser, err = db.SelectUserByEmail(email)
+		if err != nil {
+			return &data.OutputUser{}, false, err
+		}
 	}
 
 	hash, err := hash.Get(authUser.AuthSalt, password)
 
 	if bytes.Compare(hash, authUser.AuthHash) != 0 {
-		return &data.OutputUser{}, nil
+		return &data.OutputUser{}, false, nil
 	}
 
 	outputUser := data.NewOutputUser(authUser)
-	outputUser.SessionToken = session.New(authUser)
 
-	return outputUser, nil
+	if !activeSession {
+		outputUser.SessionToken = session.New(authUser)
+	}
+
+	return outputUser, true, nil
 }
 
 var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")

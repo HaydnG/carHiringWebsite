@@ -4,6 +4,7 @@ import (
 	"carHiringWebsite/data"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -24,11 +25,15 @@ func init() {
 func New(user *data.User) string {
 	userCopy := *user
 
+	userCopy.SessionToken = uuid.New().String()
+
 	newBag := &sessionBag{
-		lock:  sync.RWMutex{},
-		token: uuid.New().String(),
-		user:  userCopy,
-		bag:   make(map[string]interface{}),
+		lock:       sync.RWMutex{},
+		token:      userCopy.SessionToken,
+		email:      userCopy.Email,
+		user:       userCopy,
+		bag:        make(map[string]interface{}),
+		lastActive: time.Now(),
 	}
 
 	sessions.Add(newBag)
@@ -36,7 +41,11 @@ func New(user *data.User) string {
 	return newBag.token
 }
 
-func GetByToken(token string) *sessionBag {
+func GetByEmail(email string) (*sessionBag, bool) {
+	return sessions.GetByEmail(email)
+}
+
+func GetByToken(token string) (*sessionBag, bool) {
 	return sessions.GetByToken(token)
 }
 
