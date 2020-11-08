@@ -120,6 +120,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	var err error
 
 	defer func() {
@@ -226,4 +227,8 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(&outputUser)
 	w.Write(buffer.Bytes())
+}
+
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
