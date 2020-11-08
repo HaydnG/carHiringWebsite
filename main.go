@@ -64,6 +64,7 @@ func main() {
 }
 
 func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	var err error
 
 	defer func() {
@@ -164,6 +165,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	var err error
 	var token string
 
@@ -195,6 +197,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	var err error
 	var token string
 
