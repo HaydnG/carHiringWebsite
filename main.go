@@ -2,10 +2,8 @@ package main
 
 import (
 	"bytes"
-	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
-	"carHiringWebsite/session"
 	"carHiringWebsite/userService"
 	"encoding/json"
 	"errors"
@@ -188,24 +186,11 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !session.ValidateToken(token) {
-		err = errors.New("invalid token")
+	err = userService.Logout(token)
+	if err != nil {
 		return
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		err = errors.New("session not found or expired")
-		return
-	}
-
-	user := bag.GetUser()
-	outputUser := data.NewOutputUser(user)
-
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.Encode(&outputUser)
-	w.Write(buffer.Bytes())
 }
 
 func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {

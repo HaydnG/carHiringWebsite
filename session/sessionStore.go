@@ -49,9 +49,14 @@ func (ss *sessionStore) GetByEmail(email string) (*sessionBag, bool) {
 
 func (ss *sessionStore) Delete(bag *sessionBag) {
 	ss.Lock()
-	delete(ss.storeByToken, bag.email)
-	delete(ss.storeByEmail, bag.token)
-	ss.Unlock()
+	defer ss.Unlock()
+
+	if _, ok := ss.storeByEmail[bag.email]; ok {
+		delete(ss.storeByEmail, bag.email)
+	}
+	if _, ok := ss.storeByToken[bag.token]; ok {
+		delete(ss.storeByToken, bag.token)
+	}
 }
 
 type sessionBag struct {

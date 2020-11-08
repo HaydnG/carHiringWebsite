@@ -12,9 +12,22 @@ import (
 	"time"
 )
 
-//func Logout(token string) (bool, error) {
+func Logout(token string) error {
+	if !session.ValidateToken(token) {
+		return errors.New("invalid token")
+	}
 
-//}
+	bag, activeSession := session.GetByToken(token)
+	if bag == nil || !activeSession {
+		return errors.New("session not found or expired")
+	}
+
+	if !session.Delete(bag) {
+		return errors.New("failed to delete session")
+	}
+
+	return nil
+}
 
 func ValidateSession(token string) (*data.OutputUser, error) {
 	if !session.ValidateToken(token) {
@@ -66,18 +79,18 @@ var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z
 
 func CreateUser(email, password, name string, dob time.Time) (bool, *data.OutputUser, error) {
 
-	salt, hash, err := hash.New(password)
-	if err != nil {
-		return false, &data.OutputUser{}, err
-	}
-
-	_, err = db.SelectUserByEmail(email)
+	_, err := db.SelectUserByEmail(email)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, &data.OutputUser{}, err
 		}
 	} else {
 		return false, &data.OutputUser{}, nil
+	}
+
+	salt, hash, err := hash.New(password)
+	if err != nil {
+		return false, &data.OutputUser{}, err
 	}
 
 	userID, err := db.CreateUser(email, name, dob, salt, hash)

@@ -69,3 +69,9 @@ func ValidateToken(token string) bool {
 
 	return true
 }
+
+func Delete(bag *sessionBag) bool {
+	sessions.Delete(bag)
+
+	return true
+}
