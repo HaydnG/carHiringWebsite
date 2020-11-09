@@ -36,7 +36,7 @@ func ValidateSession(token string) (*data.OutputUser, error) {
 
 	bag, activeSession := session.GetByToken(token)
 	if bag == nil || !activeSession {
-		return &data.OutputUser{}, errors.New("session not found or expired")
+		return &data.OutputUser{SessionToken: "0"}, nil
 	}
 
 	user := bag.GetUser()

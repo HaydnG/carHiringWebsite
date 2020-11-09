@@ -37,7 +37,11 @@ type OutputUser struct {
 }
 
 func (t timestamp) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.FormatInt(time.Time(t.Time).Unix(), 10)), nil
+	tim := time.Time(t.Time).Unix()
+	if tim < 0 {
+		tim = 0
+	}
+	return []byte(strconv.FormatInt(tim, 10)), nil
 }
 
 func NewOutputUser(u *User) *OutputUser {
