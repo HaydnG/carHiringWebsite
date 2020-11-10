@@ -19,7 +19,7 @@ func Logout(token string) error {
 
 	bag, activeSession := session.GetByToken(token)
 	if bag == nil || !activeSession {
-		return errors.New("session not found or expired")
+		return nil
 	}
 
 	if !session.Delete(bag) {
