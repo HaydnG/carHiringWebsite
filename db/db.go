@@ -30,16 +30,16 @@ func CloseDB() error {
 //
 //
 
-func CreateUser(email, name string, dob time.Time, salt, hash []byte) (int, error) {
+func CreateUser(email, firstname, names string, dob time.Time, salt, hash []byte) (int, error) {
 
 	stmt, err := conn.Prepare(`INSERT INTO USERS
-								(fullName,email,createdAt,authHash,authSalt,DOB)
-								VALUES(?,?,?,?,?,?)`)
+								(firstname, names,email,createdAt,authHash,authSalt,DOB)
+								VALUES(?,?,?,?,?,?,?)`)
 	if err != nil {
 		return 0, err
 	}
 
-	res, err := stmt.Exec(name, email, time.Now(), hash, salt, dob)
+	res, err := stmt.Exec(firstname, names, email, time.Now(), hash, salt, dob)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +67,7 @@ func SelectUserByID(id int) (*data.User, error) {
 func readUserRow(row *sql.Row) (*data.User, error) {
 	newUser := data.User{}
 
-	err := row.Scan(&newUser.ID, &newUser.FullName, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat)
+	err := row.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat)
 	if err != nil {
 		return &data.User{}, err
 	}

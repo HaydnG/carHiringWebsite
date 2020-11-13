@@ -80,11 +80,12 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := r.FormValue("name")
+	firstname := r.FormValue("firstname")
+	names := r.FormValue("names")
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	dobString := r.FormValue("dob")
-	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(name) == 0 {
+	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(firstname) == 0 || len(names) == 0 {
 		err = errors.New("incorrect parameters")
 		return
 	}
@@ -102,7 +103,7 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, newUser, err := userService.CreateUser(email, password, name, dob)
+	created, newUser, err := userService.CreateUser(email, password, firstname, names, dob)
 	if err != nil {
 		return
 	}

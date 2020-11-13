@@ -77,7 +77,7 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 
 var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-func CreateUser(email, password, name string, dob time.Time) (bool, *data.OutputUser, error) {
+func CreateUser(email, password, firstname, names string, dob time.Time) (bool, *data.OutputUser, error) {
 
 	_, err := db.SelectUserByEmail(email)
 	if err != nil {
@@ -93,7 +93,7 @@ func CreateUser(email, password, name string, dob time.Time) (bool, *data.Output
 		return false, &data.OutputUser{}, err
 	}
 
-	userID, err := db.CreateUser(email, name, dob, salt, hash)
+	userID, err := db.CreateUser(email, firstname, names, dob, salt, hash)
 	if err != nil {
 		return false, &data.OutputUser{}, err
 	}

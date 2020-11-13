@@ -7,7 +7,8 @@ import (
 
 type User struct {
 	ID           int
-	FullName     string
+	FirstName    string
+	Names        string
 	Email        string
 	CreatedAt    time.Time
 	Password     string
@@ -26,7 +27,8 @@ type timestamp struct {
 
 //OutputUser used for serialisation
 type OutputUser struct {
-	FullName     string    `json:"FullName"`
+	FirstName    string    `json:"FirstName"`
+	Names        string    `json:"Names"`
 	Email        string    `json:"Email"`
 	CreatedAt    timestamp `json:"CreatedAt"`
 	Blacklisted  bool      `json:"Blacklisted"`
@@ -46,7 +48,8 @@ func (t timestamp) MarshalJSON() ([]byte, error) {
 
 func NewOutputUser(u *User) *OutputUser {
 	return &OutputUser{
-		FullName:     u.FullName,
+		FirstName:    u.FirstName,
+		Names:        u.Names,
 		Email:        u.Email,
 		CreatedAt:    timestamp{u.CreatedAt},
 		Blacklisted:  u.Blacklisted,
