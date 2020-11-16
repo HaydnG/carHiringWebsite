@@ -50,6 +50,8 @@ func main() {
 	http.HandleFunc("/userService/logout", LogoutHandler)
 	http.HandleFunc("/userService/sessionCheck", SessionCheckHandler)
 
+	http.HandleFunc("/carService/get", GetCarsHandler)
+
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -231,6 +233,26 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(&outputUser)
 	w.Write(buffer.Bytes())
+}
+
+func GetCarsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+	var token string
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("GetCarsHandler error - err: %v \nsession: %v\n", err, token)
+			log.Printf("GetCarsHandler error - err: %v \nsession: %v\n", err, token)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
 }
 
 func enableCors(w *http.ResponseWriter) {
