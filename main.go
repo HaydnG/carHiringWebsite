@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"carHiringWebsite/carService"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
 	"carHiringWebsite/userService"
@@ -252,6 +253,16 @@ func GetCarsHandler(w http.ResponseWriter, r *http.Request) {
 		err = errors.New("incorrect http method")
 		return
 	}
+
+	cars, err := carService.GetCars()
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(cars)
+	w.Write(buffer.Bytes())
 
 }
 

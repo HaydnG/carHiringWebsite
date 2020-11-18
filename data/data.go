@@ -5,6 +5,52 @@ import (
 	"time"
 )
 
+type Attribute struct {
+	ID          int    `json:"ID"`
+	Description string `json:"Description"`
+}
+
+type Car struct {
+	ID          int        `json:"ID"`
+	FuelType    *Attribute `json:"FuelType"`
+	GearType    *Attribute `json:"GearType"`
+	CarType     *Attribute `json:"CarType"`
+	Size        *Attribute `json:"Size"`
+	Colour      *Attribute `json:"Colour"`
+	Cost        int        `json:"Cost"`
+	Description string     `json:"Description"`
+	Image       string     `json:"Image"`
+}
+
+func NewCar() *Car {
+	return &Car{
+		ID: 0,
+		FuelType: &Attribute{
+			ID:          0,
+			Description: "",
+		},
+		GearType: &Attribute{
+			ID:          0,
+			Description: "",
+		},
+		CarType: &Attribute{
+			ID:          0,
+			Description: "",
+		},
+		Size: &Attribute{
+			ID:          0,
+			Description: "",
+		},
+		Colour: &Attribute{
+			ID:          0,
+			Description: "",
+		},
+		Cost:        0,
+		Description: "",
+		Image:       "",
+	}
+}
+
 type User struct {
 	ID           int
 	FirstName    string
