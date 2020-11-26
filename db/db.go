@@ -15,7 +15,7 @@ var (
 
 func InitDB() error {
 
-	db, err := sql.Open("mysql", "interaction:pass@tcp(localhost:3306)/carrental?parseTime=true")
+	db, err := sql.Open("mysql", "interaction:pass@tcp(localhost:3306)/carrental?parseTime=true&timeout=3s")
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func GetCars() ([]*data.Car, error) {
 		car := data.NewCar()
 		cars[count] = car
 
-		err := rows.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image,
+		err := rows.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats,
 			&car.FuelType.Description, &car.GearType.Description, &car.CarType.Description, &car.Size.Description, &car.Colour.Description)
 		if err != nil {
 			return nil, err

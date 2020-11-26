@@ -20,6 +20,7 @@ type Car struct {
 	Cost        int        `json:"Cost"`
 	Description string     `json:"Description"`
 	Image       string     `json:"Image"`
+	Seats       int        `json:"Seats"`
 }
 
 func NewCar() *Car {
