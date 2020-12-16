@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -33,6 +34,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println("Finished building")
 	}
 
 	// Initiate db connection
@@ -42,8 +44,9 @@ func main() {
 	}
 
 	//Serve the website files generated from the build-job in public
-	fileServe := http.FileServer(http.Dir("./public"))
-	http.Handle("/", fileServe)
+	//fileServe := http.FileServer(http.Dir("./public"))
+
+	http.HandleFunc("/", SiteHandler)
 
 	//Service endpoints
 	http.HandleFunc("/userService/register", RegistrationHandler)
@@ -51,7 +54,8 @@ func main() {
 	http.HandleFunc("/userService/logout", LogoutHandler)
 	http.HandleFunc("/userService/sessionCheck", SessionCheckHandler)
 
-	http.HandleFunc("/carService/get", GetCarsHandler)
+	http.HandleFunc("/carService/getAll", GetAllCarsHandler)
+	http.HandleFunc("/carService/get", GetCarHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -66,14 +70,24 @@ func main() {
 	}
 }
 
+func SiteHandler(w http.ResponseWriter, r *http.Request) {
+	fileServe := http.FileServer(http.Dir("./public"))
+
+	if len(filepath.Ext(r.RequestURI)) == 0 {
+		r.RequestURI = "/"
+		r.URL.Path = "/"
+	}
+	fileServe.ServeHTTP(w, r)
+}
+
 func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("RegistrationHandler error - err: %v \n", err)
-			log.Printf("RegistrationHandler error - err: %v \n", err)
+			fmt.Printf("RegistrationHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("RegistrationHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -130,8 +144,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LoginHandler error - err: %v \n", err)
-			log.Printf("LoginHandler error - err: %v \n", err)
+			fmt.Printf("LoginHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("LoginHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -171,12 +185,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
-	var token string
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LogoutHandler error - err: %v \nsession: %v\n", err, token)
-			log.Printf("LogoutHandler error - err: %v \nsession: %v\n", err, token)
+			fmt.Printf("LogoutHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("LogoutHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -186,14 +199,17 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token = r.FormValue("token")
-
-	if len(token) == 0 {
-		err = errors.New("incorrect parameters")
+	token, err := r.Cookie("session-token")
+	if err != nil {
 		return
 	}
 
-	err = userService.Logout(token)
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect session")
+		return
+	}
+
+	err = userService.Logout(token.Value)
 	if err != nil {
 		return
 	}
@@ -203,12 +219,11 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
-	var token string
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("SessionCheckHandler error - err: %v \nsession: %v\n", err, token)
-			log.Printf("SessionCheckHandler error - err: %v \nsession: %v\n", err, token)
+			fmt.Printf("SessionCheckHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("SessionCheckHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -218,14 +233,16 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token = r.FormValue("token")
-
-	if len(token) == 0 {
-		err = errors.New("incorrect parameters")
+	token, err := r.Cookie("session-token")
+	if err != nil {
 		return
 	}
 
-	outputUser, err := userService.ValidateSession(token)
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+	outputUser, err := userService.ValidateSession(token.Value)
 	if err != nil {
 		return
 	}
@@ -236,15 +253,14 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func GetCarsHandler(w http.ResponseWriter, r *http.Request) {
+func GetAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
-	var token string
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarsHandler error - err: %v \nsession: %v\n", err, token)
-			log.Printf("GetCarsHandler error - err: %v \nsession: %v\n", err, token)
+			fmt.Printf("GetAllCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("GetAllCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -254,7 +270,7 @@ func GetCarsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cars, err := carService.GetCars()
+	cars, err := carService.GetAllCars()
 	if err != nil {
 		return
 	}
@@ -263,9 +279,41 @@ func GetCarsHandler(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(cars)
 	w.Write(buffer.Bytes())
+}
 
+func GetCarHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("GetCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("GetCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	id := r.FormValue("id")
+
+	cars, err := carService.GetCar(id)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(cars)
+	w.Write(buffer.Bytes())
 }
 
 func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	//(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Credentials", "true")
+	(*w).Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
+
 }
