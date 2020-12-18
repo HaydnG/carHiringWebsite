@@ -40,6 +40,9 @@ func CreateUser(email, firstname, names string, dob time.Time, salt, hash []byte
 	createUser, err := conn.Prepare(`INSERT INTO USERS
 								(firstname, names,email,createdAt,authHash,authSalt,DOB)
 								VALUES(?,?,?,?,?,?,?)`)
+	if err != nil {
+		return 0, err
+	}
 	defer createUser.Close()
 
 	res, err := createUser.Exec(firstname, names, email, time.Now(), hash, salt, dob)
@@ -134,4 +137,91 @@ func GetCar(id string) (*data.Car, error) {
 		return car, err
 	}
 	return car, nil
+}
+
+func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
+	rows, err := conn.Query(`select a1.id, a1.description
+							from equipment as a1
+							Where (a1.stock - 
+							(select COUNT(*) from equipmentbooking 
+							inner join bookings on bookings.id = equipmentbooking.bookingID
+							inner join equipment on equipmentbooking.equipmentID = equipment.id
+							where 
+							((? <= bookings.end ) and (? >= bookings.start))
+							And equipment.id = a1.id)) > 0
+							LIMIT 16`, start, end)
+	if err != nil {
+		return nil, err
+	}
+	accessories := make([]*data.Accessory, 16)
+
+	count := 0
+	for rows.Next() {
+
+		accessory := &data.Accessory{}
+		accessories[count] = accessory
+
+		err := rows.Scan(&accessory.ID, &accessory.Description)
+		if err != nil {
+			return nil, err
+		}
+
+		count++
+	}
+
+	accessories = accessories[:count]
+
+	return accessories, nil
+}
+
+func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
+	rows, err := conn.Query(`SELECT bookings.start, bookings.end FROM bookings
+						WHERE ((? <= bookings.end ) and (? >= bookings.start))
+						AND bookings.carID = ?
+						LIMIT 30`, start, end, carID)
+	if err != nil {
+		return nil, err
+	}
+	timeRanges := make([]*data.TimeRange, 30)
+
+	count := 0
+	for rows.Next() {
+
+		timeRange := &data.TimeRange{}
+		timeRanges[count] = timeRange
+
+		err := rows.Scan(&timeRange.Start, &timeRange.End)
+		if err != nil {
+			return nil, err
+		}
+
+		count++
+	}
+
+	timeRanges = timeRanges[:count]
+
+	return timeRanges, nil
+}
+
+func CreateBooking(carID, userID int, start, end string, cost, lateReturn int) (int, error) {
+
+	//Prepared statements
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn)
+												VALUES(?, ?, ?, ?, ?, '0', ?)`)
+	if err != nil {
+		return 0, err
+	}
+	defer createBooking.Close()
+
+	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn)
+	if err != nil {
+		return 0, err
+	}
+
+	bookingID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(bookingID), nil
 }

@@ -5,6 +5,39 @@ import (
 	"time"
 )
 
+type Booking struct {
+	ID int `json:ID`
+}
+
+type TimeRange struct {
+	Start time.Time `json:"Start"`
+	End   time.Time `json:"End"`
+}
+type OutputTimeRange struct {
+	Start timestamp `json:"Start"`
+	End   timestamp `json:"End"`
+}
+
+func ConvertTimeRangeSlice(ranges []*TimeRange) []*OutputTimeRange {
+
+	outputSlice := make([]*OutputTimeRange, len(ranges))
+
+	for i, timeRange := range ranges {
+		outputSlice[i] = &OutputTimeRange{
+			Start: timestamp{timeRange.Start},
+			End:   timestamp{timeRange.End},
+		}
+	}
+
+	return outputSlice
+}
+
+type Accessory struct {
+	ID          int    `json:"ID"`
+	Description string `json:"Description"`
+	Checked     bool   `json:"Checked"`
+}
+
 type Attribute struct {
 	ID          int    `json:"ID"`
 	Description string `json:"Description"`

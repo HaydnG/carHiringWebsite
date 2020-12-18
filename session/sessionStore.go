@@ -76,6 +76,14 @@ func (sb *sessionBag) GetUser() *data.User {
 	return &userCopy
 }
 
+//UpdateUser replaced the current user in the session bad with the provided
+func (sb *sessionBag) UpdateUser(user *data.User) *data.User {
+	sb.lock.RLock()
+	sb.user = *user
+	sb.lock.RUnlock()
+	return &sb.user
+}
+
 func (sb *sessionBag) GetToken() string {
 	sb.lock.RLock()
 	tokenCopy := sb.token

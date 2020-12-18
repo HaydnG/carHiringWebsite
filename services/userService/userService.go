@@ -40,7 +40,16 @@ func ValidateSession(token string) (*data.OutputUser, error) {
 	}
 
 	user := bag.GetUser()
-	outputUser := data.NewOutputUser(user)
+	newUser, err := db.SelectUserByID(user.ID)
+	if err != nil {
+		newUser = user
+	} else {
+		newUser.SessionToken = user.SessionToken
+	}
+
+	bag.UpdateUser(newUser)
+
+	outputUser := data.NewOutputUser(newUser)
 
 	return outputUser, nil
 }

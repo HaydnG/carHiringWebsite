@@ -2,10 +2,11 @@ package main
 
 import (
 	"bytes"
-	"carHiringWebsite/carService"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
-	"carHiringWebsite/userService"
+	"carHiringWebsite/services/bookingService"
+	"carHiringWebsite/services/carService"
+	"carHiringWebsite/services/userService"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -56,6 +58,10 @@ func main() {
 
 	http.HandleFunc("/carService/getAll", GetAllCarsHandler)
 	http.HandleFunc("/carService/get", GetCarHandler)
+	http.HandleFunc("/carService/getAccessories", GetCarAccessoriesHandler)
+	http.HandleFunc("/carService/getBookings", GetCarBookingsHandler)
+
+	http.HandleFunc("/bookingService/create", createBookingHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -71,8 +77,19 @@ func main() {
 }
 
 func SiteHandler(w http.ResponseWriter, r *http.Request) {
-	fileServe := http.FileServer(http.Dir("./public"))
 
+	paths := strings.Split(r.RequestURI, "/")
+	if len(paths) >= 0 {
+		if strings.Compare(paths[1], "cars") == 0 {
+			r.RequestURI = paths[2]
+			r.URL.Path = paths[2]
+			carFileServe := http.FileServer(http.Dir("./cars"))
+			carFileServe.ServeHTTP(w, r)
+			return
+		}
+	}
+
+	fileServe := http.FileServer(http.Dir("./public"))
 	if len(filepath.Ext(r.RequestURI)) == 0 {
 		r.RequestURI = "/"
 		r.URL.Path = "/"
@@ -253,6 +270,8 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
+//CAR SERVICE
+
 func GetAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
@@ -299,6 +318,10 @@ func GetCarHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.FormValue("id")
+	if id == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
 
 	cars, err := carService.GetCar(id)
 	if err != nil {
@@ -308,6 +331,124 @@ func GetCarHandler(w http.ResponseWriter, r *http.Request) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(cars)
+	w.Write(buffer.Bytes())
+}
+
+func GetCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("GetCarAccessoriesHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("GetCarAccessoriesHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	start := r.FormValue("start")
+	end := r.FormValue("end")
+	if start == "" || end == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	accessories, err := carService.GetCarAccessories(start, end)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(accessories)
+	w.Write(buffer.Bytes())
+}
+
+func GetCarBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("GetCarBookingsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("GetCarBookingsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	start := r.FormValue("start")
+	end := r.FormValue("end")
+	carID := r.FormValue("carid")
+	if start == "" || end == "" || carID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	timeRanges, err := carService.GetCarBookings(start, end, carID)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(timeRanges)
+	w.Write(buffer.Bytes())
+}
+
+//BOOKING Service
+
+func createBookingHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("CreateBookingHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			log.Printf("CreateBookingHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	start := r.FormValue("start")
+	end := r.FormValue("end")
+	carID := r.FormValue("carid")
+	late := r.FormValue("late")
+	accessories := r.FormValue("accessories")
+	days := r.FormValue("days")
+
+	if start == "" || end == "" || carID == "" || late == "" || days == "" || len(token.Value) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	booking, err := bookingService.Create(token.Value, start, end, carID, late, accessories, days)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&booking)
 	w.Write(buffer.Bytes())
 }
 
