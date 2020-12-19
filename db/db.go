@@ -203,17 +203,31 @@ func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
 	return timeRanges, nil
 }
 
-func CreateBooking(carID, userID int, start, end string, cost, lateReturn int) (int, error) {
+func BookingHasOverlap(start, end, carID string) (bool, error) {
+	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings
+								WHERE ((? <= bookings.end ) and (? >= bookings.start))
+								AND bookings.carID = ?`, start, end, carID)
+	overlaps := 0
+
+	err := row.Scan(&overlaps)
+	if err != nil {
+		return false, err
+	}
+
+	return overlaps > 0, nil
+}
+
+func CreateBooking(carID, userID int, start, end string, cost, lateReturn, extension int) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn)
-												VALUES(?, ?, ?, ?, ?, '0', ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension)
+												VALUES(?, ?, ?, ?, ?, '0', ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn)
+	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension)
 	if err != nil {
 		return 0, err
 	}

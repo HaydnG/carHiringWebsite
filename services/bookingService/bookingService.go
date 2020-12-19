@@ -10,8 +10,9 @@ import (
 	"time"
 )
 
-func Create(token, start, end, carID, late, accessories, days string) (*data.Booking, error) {
-	var lateValue int
+func Create(token, start, end, carID, late, extension, accessories, days string) (*data.Booking, error) {
+	lateValue := 0
+	extensionValue := 0
 
 	if !session.ValidateToken(token) {
 		return nil, errors.New("invalid token")
@@ -52,24 +53,50 @@ func Create(token, start, end, carID, late, accessories, days string) (*data.Boo
 	endTime := time.Unix(endNum, 0)
 
 	daysValue, err := strconv.ParseFloat(days, 64)
+	if err != nil {
+		return nil, err
+	}
 
-	if ((endTime.Sub(startTime).Hours() / 24) + 0.5) != daysValue {
+	calculatedDays := (endTime.Sub(startTime).Hours() / 24) + 0.5
+	if extension == "true" {
+		extensionValue = 1
+		calculatedDays += 0.5
+	} else if extension == "false" {
+		extensionValue = 0
+	} else {
+		return nil, errors.New("invalid extension param")
+	}
+
+	if calculatedDays != daysValue {
 		return nil, errors.New("days param provided doesnt match date range given")
 	}
 
 	car, err := db.GetCar(carID)
-	if err != nil && car != nil {
+	if err != nil {
 		return nil, err
 	}
-
+	if car == nil {
+		return nil, errors.New("problem retrieving car")
+	}
 	price := car.Cost * int(daysValue)
+
+	startString := startTime.Format("2006-01-02")
+	endString := endTime.Format("2006-01-02")
+
+	overlap, err := db.BookingHasOverlap(startString, endString, carID)
+	if err != nil {
+		return nil, err
+	}
+	if overlap {
+		return nil, errors.New("booking has overlap")
+	}
 
 	bookingID, err := db.CreateBooking(car.ID,
 		user.ID,
-		startTime.Format("2006-01-02"),
-		endTime.Format("2006-01-02"),
+		startString,
+		endString,
 		price,
-		lateValue)
+		lateValue, extensionValue)
 	if err != nil || bookingID != 0 {
 		return nil, err
 	}

@@ -103,8 +103,8 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("RegistrationHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("RegistrationHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("RegistrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("RegistrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -161,8 +161,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LoginHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("LoginHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("LoginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("LoginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -205,8 +205,8 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LogoutHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("LogoutHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("LogoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("LogoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -239,8 +239,8 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("SessionCheckHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("SessionCheckHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("SessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("SessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -278,8 +278,8 @@ func GetAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetAllCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("GetAllCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("GetAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("GetAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -306,8 +306,8 @@ func GetCarHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("GetCarsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("GetCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("GetCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -340,8 +340,8 @@ func GetCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarAccessoriesHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("GetCarAccessoriesHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("GetCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("GetCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -375,8 +375,8 @@ func GetCarBookingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarBookingsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("GetCarBookingsHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("GetCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("GetCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -413,8 +413,8 @@ func createBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("CreateBookingHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
-			log.Printf("CreateBookingHandler error - err: %v \ncookies: %+v\n", err, r.Cookies())
+			fmt.Printf("CreateBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("CreateBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -433,6 +433,7 @@ func createBookingHandler(w http.ResponseWriter, r *http.Request) {
 	end := r.FormValue("end")
 	carID := r.FormValue("carid")
 	late := r.FormValue("late")
+	extension := r.FormValue("extension")
 	accessories := r.FormValue("accessories")
 	days := r.FormValue("days")
 
@@ -441,7 +442,7 @@ func createBookingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	booking, err := bookingService.Create(token.Value, start, end, carID, late, accessories, days)
+	booking, err := bookingService.Create(token.Value, start, end, carID, late, extension, accessories, days)
 	if err != nil {
 		return
 	}
