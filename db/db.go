@@ -3,6 +3,7 @@ package db
 import (
 	"carHiringWebsite/data"
 	"database/sql"
+	"errors"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -53,6 +54,10 @@ func CreateUser(email, firstname, names string, dob time.Time, salt, hash []byte
 	userID, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
+	}
+
+	if userID == 0 {
+		return 0, errors.New("no user inserted")
 	}
 
 	return int(userID), nil
@@ -217,17 +222,17 @@ func BookingHasOverlap(start, end, carID string) (bool, error) {
 	return overlaps > 0, nil
 }
 
-func CreateBooking(carID, userID int, start, end string, cost, lateReturn, extension int) (int, error) {
+func CreateBooking(carID, userID int, start, end string, cost float64, lateReturn, extension int) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension)
-												VALUES(?, ?, ?, ?, ?, '0', ?, ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension, created)
+												VALUES(?, ?, ?, ?, ?, '0', ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension)
+	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension, time.Now())
 	if err != nil {
 		return 0, err
 	}
@@ -237,5 +242,115 @@ func CreateBooking(carID, userID int, start, end string, cost, lateReturn, exten
 		return 0, err
 	}
 
+	if bookingID == 0 {
+		return 0, errors.New("no booking inserted")
+	}
+
 	return int(bookingID), nil
+}
+
+func InsertBookingStatus(bookingID, processID, adminID int, description string) (int, error) {
+
+	//Prepared statements
+	insertBookingStatus, err := conn.Prepare(`INSERT INTO bookingstatus(bookingID, processID, completed, adminID, description)
+												VALUES(?, ?, ?, ?,?)`)
+	if err != nil {
+		return 0, err
+	}
+	defer insertBookingStatus.Close()
+
+	res, err := insertBookingStatus.Exec(bookingID, processID, time.Now(), adminID, description)
+	if err != nil {
+		return 0, err
+	}
+
+	statusID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	if statusID == 0 {
+		return 0, errors.New("no status inserted")
+	}
+
+	return int(statusID), nil
+}
+
+func AddBookingEquipment(bookingID int, equipment []string) error {
+
+	//Prepared statements
+	insertBookingStatus, err := conn.Prepare(`INSERT INTO equipmentbooking(bookingID, equipmentID)
+												VALUES(?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer insertBookingStatus.Close()
+
+	for _, v := range equipment {
+		if v == "" {
+			return errors.New("invalid equipment param")
+		}
+
+		_, err := insertBookingStatus.Exec(bookingID, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func GetBookingAccessories(bookingID int) ([]*data.Accessory, error) {
+
+	rows, err := conn.Query(`SELECT equipment.id, equipment.description FROM equipment
+inner JOIN equipmentbooking ON equipmentbooking.equipmentID = equipment.id 
+WHERE  equipmentbooking.bookingID = ? LIMIT 10`, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	accessories := make([]*data.Accessory, 10)
+
+	count := 0
+	for rows.Next() {
+
+		accessory := &data.Accessory{}
+		accessories[count] = accessory
+
+		err := rows.Scan(&accessory.ID, &accessory.Description)
+		if err != nil {
+			return nil, err
+		}
+
+		count++
+	}
+
+	accessories = accessories[:count]
+
+	return accessories, nil
+}
+
+func GetSingleBooking(bookingID int) (*data.Booking, error) {
+	var (
+		start   time.Time
+		end     time.Time
+		created time.Time
+	)
+
+	row := conn.QueryRow(`SELECT bookings.*, bookingstatus.processID FROM carrental.bookings, carrental.bookingstatus 
+WHERE bookings.id = ? 
+AND bookingstatus.bookingID = bookings.id
+ORDER BY bookingstatus.completed DESC LIMIT 1`, bookingID)
+
+	booking := &data.Booking{}
+
+	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &booking.TotalCost,
+		&booking.AmountPaid, &booking.LateReturn, &booking.Extension, &created, &booking.ProcessID)
+	if err != nil {
+		return nil, err
+	}
+	booking.Start = *data.ConvertDate(start)
+	booking.End = *data.ConvertDate(end)
+	booking.Created = *data.ConvertDate(created)
+
+	return booking, nil
 }

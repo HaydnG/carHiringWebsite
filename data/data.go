@@ -6,7 +6,19 @@ import (
 )
 
 type Booking struct {
-	ID int `json:ID`
+	ID          int          `json:ID`
+	CarID       int          `json:"carID"`
+	UserID      int          `json:"userID"`
+	Start       timestamp    `json:"start"`
+	End         timestamp    `json:"end"`
+	TotalCost   float64      `json:"totalCost"`
+	AmountPaid  float64      `json:"amountPaid"`
+	LateReturn  bool         `json:"lateReturn"`
+	Extension   bool         `json:"extension"`
+	Created     timestamp    `json:"created"`
+	ProcessID   int          `json:"processID"`
+	CarData     *Car         `json:"carData"`
+	Accessories []*Accessory `json:"accessories"`
 }
 
 type TimeRange struct {
@@ -50,7 +62,7 @@ type Car struct {
 	CarType     *Attribute `json:"CarType"`
 	Size        *Attribute `json:"Size"`
 	Colour      *Attribute `json:"Colour"`
-	Cost        int        `json:"Cost"`
+	Cost        float64    `json:"Cost"`
 	Description string     `json:"Description"`
 	Image       string     `json:"Image"`
 	Seats       int        `json:"Seats"`
@@ -103,6 +115,10 @@ type User struct {
 
 type timestamp struct {
 	time.Time
+}
+
+func ConvertDate(d time.Time) *timestamp {
+	return &timestamp{d}
 }
 
 //OutputUser used for serialisation
