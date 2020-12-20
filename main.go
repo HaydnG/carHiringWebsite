@@ -62,6 +62,8 @@ func main() {
 	http.HandleFunc("/carService/getBookings", GetCarBookingsHandler)
 
 	http.HandleFunc("/bookingService/create", createBookingHandler)
+	http.HandleFunc("/bookingService/makePayment", makePaymentHandler)
+	http.HandleFunc("/bookingService/getUserBookings", GetUsersBookingsHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -453,9 +455,82 @@ func createBookingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
+func makePaymentHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("makePaymentHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("makePaymentHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookingID := r.FormValue("bookingID")
+
+	if bookingID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	err = bookingService.MakePayment(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func GetUsersBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("GetUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("GetUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+	bookings, err := bookingService.GetUsersBookings(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&bookings)
+	w.Write(buffer.Bytes())
+}
+
 func enableCors(w *http.ResponseWriter) {
 	//(*w).Header().Set("Access-Control-Allow-Origin", "*")
 	(*w).Header().Set("Access-Control-Allow-Credentials", "true")
 	(*w).Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
-
 }

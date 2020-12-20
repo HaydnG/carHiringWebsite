@@ -66,7 +66,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	if lateValue == 1 {
 		calculatedDays += 0.6
 	} else if extensionValue == 1 {
-		calculatedDays += 0.1
+		calculatedDays += 0.5
 	}
 
 	if calculatedDays < 0.5 || (calculatedDays > 14 && lateValue == 0) || (calculatedDays > 14.1 && lateValue == 1) {
@@ -117,7 +117,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		startString,
 		endString,
 		price,
-		lateValue, extensionValue)
+		lateValue, extensionValue, calculatedDays)
 	if err != nil {
 		return nil, err
 	}
@@ -151,4 +151,87 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	booking.Accessories = bookingAccesories
 
 	return booking, nil
+}
+
+func MakePayment(token, bookingID string) error {
+	if !session.ValidateToken(token) {
+		return errors.New("invalid token")
+	}
+
+	bag, activeSession := session.GetByToken(token)
+	if bag == nil || !activeSession {
+		return errors.New("inactive session")
+	}
+
+	user := bag.GetUser()
+
+	bookingIDValid, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookingIDValid)
+	if err != nil {
+		return err
+	}
+
+	amountDue := booking.TotalCost - booking.AmountPaid
+	if amountDue <= 0 {
+		return errors.New("no payment needed")
+	}
+
+	err = db.UpdateBookingPayment(booking.ID, user.ID, amountDue)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, 2, 0, "")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, 3, 0, "")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetUsersBookings(token string) (map[int][]*data.Booking, error) {
+	if !session.ValidateToken(token) {
+		return nil, errors.New("invalid token")
+	}
+
+	bag, activeSession := session.GetByToken(token)
+	if bag == nil || !activeSession {
+		return nil, errors.New("inactive session")
+	}
+
+	user := bag.GetUser()
+
+	bookings, err := db.GetUsersBookings(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(bookings) <= 0 {
+		return map[int][]*data.Booking{}, nil
+	}
+
+	return organiseBookings(bookings), nil
+}
+
+func organiseBookings(bookings []*data.Booking) map[int][]*data.Booking {
+	organisedBookings := make(map[int][]*data.Booking)
+
+	for _, value := range bookings {
+		if _, exists := organisedBookings[value.ProcessID]; !exists {
+			organisedBookings[value.ProcessID] = make([]*data.Booking, 1)
+			organisedBookings[value.ProcessID][0] = value
+		} else {
+			organisedBookings[value.ProcessID] = append(organisedBookings[value.ProcessID], value)
+		}
+	}
+
+	return organisedBookings
 }

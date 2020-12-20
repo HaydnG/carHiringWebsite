@@ -222,17 +222,17 @@ func BookingHasOverlap(start, end, carID string) (bool, error) {
 	return overlaps > 0, nil
 }
 
-func CreateBooking(carID, userID int, start, end string, cost float64, lateReturn, extension int) (int, error) {
+func CreateBooking(carID, userID int, start, end string, cost float64, lateReturn, extension int, bookingLength float64) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension, created)
-												VALUES(?, ?, ?, ?, ?, '0', ?, ?, ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension, created, bookingLength)
+												VALUES(?, ?, ?, ?, ?, '0', ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension, time.Now())
+	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension, time.Now(), bookingLength)
 	if err != nil {
 		return 0, err
 	}
@@ -344,7 +344,7 @@ ORDER BY bookingstatus.completed DESC LIMIT 1`, bookingID)
 	booking := &data.Booking{}
 
 	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &booking.TotalCost,
-		&booking.AmountPaid, &booking.LateReturn, &booking.Extension, &created, &booking.ProcessID)
+		&booking.AmountPaid, &booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID)
 	if err != nil {
 		return nil, err
 	}
@@ -353,4 +353,74 @@ ORDER BY bookingstatus.completed DESC LIMIT 1`, bookingID)
 	booking.Created = *data.ConvertDate(created)
 
 	return booking, nil
+}
+
+func GetUsersBookings(userID int) ([]*data.Booking, error) {
+	var (
+		start   time.Time
+		end     time.Time
+		created time.Time
+	)
+
+	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.totalCost, b.amountPaid, b.lateReturn, b.extension, b.created, b.bookingLength,
+								(SELECT processID FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
+								ORDER BY bookingstatus.processID DESC
+								LIMIT 1) as processID,
+								cars.id as carID, cars.cost, cars.description, cars.image, cars.seats, fuelType.description, gearType.description, carType.description, size.description, colour.description
+								FROM bookings AS b
+								INNER JOIN cars ON b.carID = cars.id
+								INNER JOIN fueltype ON cars.fuelType = fuelType.id
+								INNER JOIN gearType ON cars.gearType = gearType.id
+								INNER JOIN carType ON cars.carType = carType.id
+								INNER JOIN size ON cars.size = size.id
+								INNER JOIN colour ON cars.colour = colour.id
+								WHERE b.userID = ?
+								ORDER BY b.created DESC LIMIT 16`, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	bookings := make([]*data.Booking, 16)
+
+	count := 0
+	for rows.Next() {
+
+		booking := &data.Booking{}
+		booking.CarData = data.NewCar()
+		bookings[count] = booking
+
+		err := rows.Scan(&booking.ID, &start, &end, &booking.TotalCost, &booking.AmountPaid,
+			&booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID,
+			&booking.CarData.ID, &booking.CarData.Cost, &booking.CarData.Description, &booking.CarData.Image, &booking.CarData.Seats,
+			&booking.CarData.FuelType.Description, &booking.CarData.GearType.Description, &booking.CarData.CarType.Description, &booking.CarData.Size.Description, &booking.CarData.Colour.Description)
+		if err != nil {
+			return nil, err
+		}
+		booking.Start = *data.ConvertDate(start)
+		booking.End = *data.ConvertDate(end)
+		booking.Created = *data.ConvertDate(created)
+
+		count++
+	}
+	bookings = bookings[:count]
+
+	return bookings, nil
+}
+
+func UpdateBookingPayment(bookingID, userID int, amount float64) error {
+	result, err := conn.Exec(`UPDATE bookings SET amountPaid = ? WHERE (id = ? AND userID = ?)`, amount, bookingID, userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
 }
