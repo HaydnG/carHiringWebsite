@@ -401,6 +401,11 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		booking.End = *data.ConvertDate(end)
 		booking.Created = *data.ConvertDate(created)
 
+		booking.Accessories, err = GetBookingAccessories(booking.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		count++
 	}
 	bookings = bookings[:count]
