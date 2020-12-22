@@ -2,6 +2,7 @@ package session
 
 import (
 	"carHiringWebsite/data"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -10,6 +11,8 @@ import (
 )
 
 var (
+	InvalidToken     error = errors.New("invalid token")
+	InactiveSession  error = errors.New("inactive session")
 	sessions         sessionStore
 	sessionFormation []int = []int{8, 4, 4, 4, 12}
 )
@@ -41,33 +44,33 @@ func New(user *data.User) string {
 	return newBag.token
 }
 
-func GetByEmail(email string) (*sessionBag, bool) {
+func GetByEmail(email string) (*sessionBag, error) {
 	return sessions.GetByEmail(email)
 }
 
-func GetByToken(token string) (*sessionBag, bool) {
+func GetByToken(token string) (*sessionBag, error) {
 	return sessions.GetByToken(token)
 }
 
-func ValidateToken(token string) bool {
+func ValidateToken(token string) error {
 
 	if len(token) != 36 {
-		return false
+		return InvalidToken
 	}
 	if strings.Count(token, "-") != 4 {
-		return false
+		return InvalidToken
 	}
 
 	parts := strings.Split(token, "-")
 
 	for i, v := range sessionFormation {
 		if len(parts[i]) != v {
-			return false
+			return InvalidToken
 		}
 
 	}
 
-	return true
+	return nil
 }
 
 func Delete(bag *sessionBag) bool {

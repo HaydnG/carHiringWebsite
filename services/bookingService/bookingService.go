@@ -14,15 +14,15 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	lateValue := 0
 	extensionValue := 0
 
-	if !session.ValidateToken(token) {
-		return nil, errors.New("invalid token")
+	err := session.ValidateToken(token)
+	if err != nil {
+		return nil, err
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		return nil, errors.New("inactive session")
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return nil, err
 	}
-
 	user := bag.GetUser()
 
 	startNum, err := strconv.ParseInt(start, 10, 64)
@@ -154,15 +154,15 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 }
 
 func MakePayment(token, bookingID string) error {
-	if !session.ValidateToken(token) {
-		return errors.New("invalid token")
+	err := session.ValidateToken(token)
+	if err != nil {
+		return err
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		return errors.New("inactive session")
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return err
 	}
-
 	user := bag.GetUser()
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
@@ -173,6 +173,10 @@ func MakePayment(token, bookingID string) error {
 	booking, err := db.GetSingleBooking(bookingIDValid)
 	if err != nil {
 		return err
+	}
+
+	if booking.ProcessID != 1 {
+		return errors.New("booking not awaiting payment")
 	}
 
 	amountDue := booking.TotalCost - booking.AmountPaid
@@ -199,15 +203,15 @@ func MakePayment(token, bookingID string) error {
 }
 
 func GetUsersBookings(token string) (map[int][]*data.Booking, error) {
-	if !session.ValidateToken(token) {
-		return nil, errors.New("invalid token")
+	err := session.ValidateToken(token)
+	if err != nil {
+		return nil, err
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		return nil, errors.New("inactive session")
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return nil, err
 	}
-
 	user := bag.GetUser()
 
 	bookings, err := db.GetUsersBookings(user.ID)
@@ -234,4 +238,42 @@ func organiseBookings(bookings []*data.Booking) map[int][]*data.Booking {
 	}
 
 	return organisedBookings
+}
+
+func CancelBooking(token, bookingID string) error {
+	err := session.ValidateToken(token)
+	if err != nil {
+		return err
+	}
+
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return err
+	}
+	user := bag.GetUser()
+
+	bookingIDValid, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookingIDValid)
+	if err != nil {
+		return err
+	}
+
+	if user.ID != booking.UserID {
+		return errors.New("this booking does not belong to this user")
+	}
+
+	if booking.ProcessID == 10 {
+		return errors.New("booking already canceled")
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, 10, 0, "user canceled booking")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

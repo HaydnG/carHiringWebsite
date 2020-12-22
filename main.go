@@ -51,19 +51,20 @@ func main() {
 	http.HandleFunc("/", SiteHandler)
 
 	//Service endpoints
-	http.HandleFunc("/userService/register", RegistrationHandler)
-	http.HandleFunc("/userService/login", LoginHandler)
-	http.HandleFunc("/userService/logout", LogoutHandler)
-	http.HandleFunc("/userService/sessionCheck", SessionCheckHandler)
+	http.HandleFunc("/userService/register", registrationHandler)
+	http.HandleFunc("/userService/login", loginHandler)
+	http.HandleFunc("/userService/logout", logoutHandler)
+	http.HandleFunc("/userService/sessionCheck", sessionCheckHandler)
 
-	http.HandleFunc("/carService/getAll", GetAllCarsHandler)
-	http.HandleFunc("/carService/get", GetCarHandler)
-	http.HandleFunc("/carService/getAccessories", GetCarAccessoriesHandler)
-	http.HandleFunc("/carService/getBookings", GetCarBookingsHandler)
+	http.HandleFunc("/carService/getAll", setAllCarsHandler)
+	http.HandleFunc("/carService/get", getCarHandler)
+	http.HandleFunc("/carService/getAccessories", getCarAccessoriesHandler)
+	http.HandleFunc("/carService/getBookings", getCarBookingsHandler)
 
 	http.HandleFunc("/bookingService/create", createBookingHandler)
 	http.HandleFunc("/bookingService/makePayment", makePaymentHandler)
-	http.HandleFunc("/bookingService/getUserBookings", GetUsersBookingsHandler)
+	http.HandleFunc("/bookingService/getUserBookings", getUsersBookingsHandler)
+	http.HandleFunc("/bookingService/cancelBooking", cancelBookingHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -99,14 +100,14 @@ func SiteHandler(w http.ResponseWriter, r *http.Request) {
 	fileServe.ServeHTTP(w, r)
 }
 
-func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
+func registrationHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("RegistrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("RegistrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("registrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("registrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -157,14 +158,14 @@ func RegistrationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LoginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("LoginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("loginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("loginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -201,14 +202,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("LogoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("LogoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("logoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("logoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -235,14 +236,14 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
+func sessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("SessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("SessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("sessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("sessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -274,14 +275,14 @@ func SessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 //CAR SERVICE
 
-func GetAllCarsHandler(w http.ResponseWriter, r *http.Request) {
+func setAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("GetAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("setAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("setAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -302,7 +303,7 @@ func GetAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func GetCarHandler(w http.ResponseWriter, r *http.Request) {
+func getCarHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
@@ -336,14 +337,14 @@ func GetCarHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func GetCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
+func getCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("GetCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("getCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("getCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -371,14 +372,14 @@ func GetCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
-func GetCarBookingsHandler(w http.ResponseWriter, r *http.Request) {
+func getCarBookingsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("GetCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("getCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("getCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
@@ -492,14 +493,51 @@ func makePaymentHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func GetUsersBookingsHandler(w http.ResponseWriter, r *http.Request) {
+func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
-			log.Printf("GetUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			fmt.Printf("cancelBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("cancelBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookingID := r.FormValue("bookingID")
+
+	if bookingID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	err = bookingService.CancelBooking(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func getUsersBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("getUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("getUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()

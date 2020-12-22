@@ -180,9 +180,13 @@ func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
 }
 
 func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
-	rows, err := conn.Query(`SELECT bookings.start, bookings.end FROM bookings
-						WHERE ((? <= bookings.end ) and (? >= bookings.start))
-						AND bookings.carID = ?
+	rows, err := conn.Query(`SELECT b.start, b.end FROM bookings as b
+						WHERE ((? <= b.end ) and (? >= b.start))
+						AND b.carID = ? 
+						AND (SELECT processID FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
+								ORDER BY bookingstatus.processID DESC
+								LIMIT 1) != 10
 						LIMIT 30`, start, end, carID)
 	if err != nil {
 		return nil, err
@@ -209,9 +213,13 @@ func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
 }
 
 func BookingHasOverlap(start, end, carID string) (bool, error) {
-	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings
-								WHERE ((? <= bookings.end ) and (? >= bookings.start))
-								AND bookings.carID = ?`, start, end, carID)
+	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings AS b
+								WHERE ((? <= b.end ) AND (? >= b.start))
+								AND (SELECT processID FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
+								ORDER BY bookingstatus.processID DESC
+								LIMIT 1) != 10
+								AND b.carID = ?`, start, end, carID)
 	overlaps := 0
 
 	err := row.Scan(&overlaps)

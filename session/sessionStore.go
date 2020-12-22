@@ -21,30 +21,33 @@ func (ss *sessionStore) Add(bag *sessionBag) {
 	ss.Unlock()
 }
 
-func (ss *sessionStore) GetByToken(token string) (*sessionBag, bool) {
+func (ss *sessionStore) GetByToken(token string) (*sessionBag, error) {
 	ss.RLock()
 	bag, ok := ss.storeByToken[token]
 	ss.RUnlock()
 
 	if ok && !bag.isActive() {
 		ss.Delete(bag)
-		return nil, false
+		return nil, InactiveSession
+	} else if !ok {
+		return nil, InactiveSession
 	}
-
-	return bag, ok
+	return bag, nil
 }
 
-func (ss *sessionStore) GetByEmail(email string) (*sessionBag, bool) {
+func (ss *sessionStore) GetByEmail(email string) (*sessionBag, error) {
 	ss.RLock()
 	bag, ok := ss.storeByEmail[email]
 	ss.RUnlock()
 
 	if ok && !bag.isActive() {
 		ss.Delete(bag)
-		return nil, false
+		return nil, InactiveSession
+	} else if !ok {
+		return nil, InactiveSession
 	}
 
-	return bag, ok
+	return bag, nil
 }
 
 func (ss *sessionStore) Delete(bag *sessionBag) {

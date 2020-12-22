@@ -13,13 +13,14 @@ import (
 )
 
 func Logout(token string) error {
-	if !session.ValidateToken(token) {
-		return errors.New("invalid token")
+	err := session.ValidateToken(token)
+	if err != nil {
+		return err
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		return nil
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return err
 	}
 
 	if !session.Delete(bag) {
@@ -30,13 +31,14 @@ func Logout(token string) error {
 }
 
 func ValidateSession(token string) (*data.OutputUser, error) {
-	if !session.ValidateToken(token) {
-		return &data.OutputUser{}, errors.New("invalid token")
+	err := session.ValidateToken(token)
+	if err != nil {
+		return nil, err
 	}
 
-	bag, activeSession := session.GetByToken(token)
-	if bag == nil || !activeSession {
-		return &data.OutputUser{SessionToken: "0"}, nil
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return nil, err
 	}
 
 	user := bag.GetUser()
@@ -57,16 +59,18 @@ func ValidateSession(token string) (*data.OutputUser, error) {
 func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 	var authUser *data.User
 	var err error
+	newSession := false
 
-	bag, activeSession := session.GetByEmail(email)
+	bag, err := session.GetByEmail(email)
 
-	if activeSession {
+	if err == nil {
 		authUser = bag.GetUser()
-	} else {
+	} else if err == session.InactiveSession {
 		authUser, err = db.SelectUserByEmail(email)
 		if err != nil {
 			return &data.OutputUser{}, false, err
 		}
+		newSession = true
 	}
 
 	hash, err := hash.Get(authUser.AuthSalt, password)
@@ -77,7 +81,7 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 
 	outputUser := data.NewOutputUser(authUser)
 
-	if !activeSession {
+	if newSession {
 		outputUser.SessionToken = session.New(authUser)
 	}
 
