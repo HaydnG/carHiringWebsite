@@ -152,7 +152,7 @@ func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
 							inner join bookings on bookings.id = equipmentbooking.bookingID
 							inner join equipment on equipmentbooking.equipmentID = equipment.id
 							where 
-							((? <= bookings.end ) and (? >= bookings.start))
+							((? <= bookings.end ) and (? >= bookings.finish))
 							And equipment.id = a1.id)) > 0
 							LIMIT 16`, start, end)
 	if err != nil {
@@ -180,8 +180,8 @@ func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
 }
 
 func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
-	rows, err := conn.Query(`SELECT b.start, b.end FROM bookings as b
-						WHERE ((? <= b.end ) and (? >= b.start))
+	rows, err := conn.Query(`SELECT b.start, b.finish FROM bookings as b
+						WHERE ((? <= b.finish ) and (? >= b.start))
 						AND b.carID = ? 
 						AND (SELECT processID FROM bookingstatus 
 								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
@@ -230,17 +230,17 @@ func BookingHasOverlap(start, end, carID string) (bool, error) {
 	return overlaps > 0, nil
 }
 
-func CreateBooking(carID, userID int, start, end string, cost float64, lateReturn, extension int, bookingLength float64) (int, error) {
+func CreateBooking(carID, userID int, start, end, finish string, cost float64, lateReturn, extension bool, bookingLength float64) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, totalCost, amountPaid, lateReturn, extension, created, bookingLength)
-												VALUES(?, ?, ?, ?, ?, '0', ?, ?, ?, ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, extension, created, bookingLength)
+												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, cost, lateReturn, extension, time.Now(), bookingLength)
+	res, err := createBooking.Exec(carID, userID, start, end, finish, cost, lateReturn, extension, time.Now(), bookingLength)
 	if err != nil {
 		return 0, err
 	}
@@ -341,6 +341,7 @@ func GetSingleBooking(bookingID int) (*data.Booking, error) {
 	var (
 		start   time.Time
 		end     time.Time
+		finish  time.Time
 		created time.Time
 	)
 
@@ -351,13 +352,14 @@ ORDER BY bookingstatus.completed DESC LIMIT 1`, bookingID)
 
 	booking := &data.Booking{}
 
-	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &booking.TotalCost,
+	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &finish, &booking.TotalCost,
 		&booking.AmountPaid, &booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID)
 	if err != nil {
 		return nil, err
 	}
 	booking.Start = *data.ConvertDate(start)
 	booking.End = *data.ConvertDate(end)
+	booking.Finish = *data.ConvertDate(finish)
 	booking.Created = *data.ConvertDate(created)
 
 	return booking, nil
@@ -367,10 +369,11 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 	var (
 		start   time.Time
 		end     time.Time
+		finish  time.Time
 		created time.Time
 	)
 
-	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.totalCost, b.amountPaid, b.lateReturn, b.extension, b.created, b.bookingLength,
+	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.extension, b.created, b.bookingLength,
 								(SELECT processID FROM bookingstatus 
 								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
 								ORDER BY bookingstatus.processID DESC
@@ -398,7 +401,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		booking.CarData = data.NewCar()
 		bookings[count] = booking
 
-		err := rows.Scan(&booking.ID, &start, &end, &booking.TotalCost, &booking.AmountPaid,
+		err := rows.Scan(&booking.ID, &start, &end, &finish, &booking.TotalCost, &booking.AmountPaid,
 			&booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID,
 			&booking.CarData.ID, &booking.CarData.Cost, &booking.CarData.Description, &booking.CarData.Image, &booking.CarData.Seats,
 			&booking.CarData.FuelType.Description, &booking.CarData.GearType.Description, &booking.CarData.CarType.Description, &booking.CarData.Size.Description, &booking.CarData.Colour.Description)
@@ -407,6 +410,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		}
 		booking.Start = *data.ConvertDate(start)
 		booking.End = *data.ConvertDate(end)
+		booking.Finish = *data.ConvertDate(finish)
 		booking.Created = *data.ConvertDate(created)
 
 		booking.Accessories, err = GetBookingAccessories(booking.ID)

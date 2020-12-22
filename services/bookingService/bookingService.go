@@ -10,9 +10,14 @@ import (
 	"time"
 )
 
+const (
+	lateReturnIncrease = 0.6
+	extensionIncrease  = 0.5
+	PaymentNeeded      = iota
+)
+
 func Create(token, start, end, carID, late, extension, accessories, days string) (*data.Booking, error) {
-	lateValue := 0
-	extensionValue := 0
+	var finishString string
 
 	err := session.ValidateToken(token)
 	if err != nil {
@@ -40,36 +45,33 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 
 	startTime := time.Unix(startNum, 0)
 	endTime := time.Unix(endNum, 0)
+	finishTime := time.Unix(endNum, 0)
 
 	calculatedDays := (endTime.Sub(startTime).Hours() / 24) + 0.5
 
-	if extension == "true" {
-		extensionValue = 1
-	} else if extension == "false" {
-		extensionValue = 0
-	} else {
-		return nil, errors.New("invalid extension param")
+	lateValue, err := strconv.ParseBool(late)
+	if err != nil {
+		return nil, err
+	}
+	extensionValue, err := strconv.ParseBool(extension)
+	if err != nil {
+		return nil, err
 	}
 
-	if late == "true" {
+	if lateValue {
 		if !user.Repeat {
 			return nil, errors.New("cannot make a late booking without repeat status")
 		}
-		lateValue = 1
-		extensionValue = 0
-	} else if late == "false" {
-		lateValue = 0
-	} else {
-		return nil, errors.New("invalid late param")
+		extensionValue = false
 	}
 
-	if lateValue == 1 {
-		calculatedDays += 0.6
-	} else if extensionValue == 1 {
-		calculatedDays += 0.5
+	if lateValue {
+		calculatedDays += lateReturnIncrease
+	} else if extensionValue {
+		calculatedDays += extensionIncrease
 	}
 
-	if calculatedDays < 0.5 || (calculatedDays > 14 && lateValue == 0) || (calculatedDays > 14.1 && lateValue == 1) {
+	if calculatedDays < 0.5 || (calculatedDays > 14 && lateValue) || (calculatedDays > 14.1 && lateValue) {
 		return nil, errors.New("booking duration out of bounds")
 	}
 
@@ -88,7 +90,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	if err != nil {
 		return nil, err
 	}
-	if nextDayBooked && (lateValue == 1 || extensionValue == 1) {
+	if nextDayBooked && (lateValue || extensionValue) {
 		return nil, errors.New("no extension allowed on this booking")
 	}
 
@@ -104,6 +106,13 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	startString := startTime.Format("2006-01-02")
 	endString := endTime.Format("2006-01-02")
 
+	if lateValue || extensionValue {
+		finishTime := finishTime.Add(time.Hour * 24)
+		finishString = finishTime.Format("2006-01-02")
+	} else {
+		finishString = finishTime.Format("2006-01-02")
+	}
+
 	overlap, err := db.BookingHasOverlap(startString, endString, carID)
 	if err != nil {
 		return nil, err
@@ -116,6 +125,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		user.ID,
 		startString,
 		endString,
+		finishString,
 		price,
 		lateValue, extensionValue, calculatedDays)
 	if err != nil {
@@ -189,7 +199,7 @@ func MakePayment(token, bookingID string) error {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, 2, 0, "")
+	_, err = db.InsertBookingStatus(booking.ID, 2, 0, "Made payment of £"+strconv.FormatFloat(amountDue, 'f', 2, 64))
 	if err != nil {
 		return err
 	}
@@ -276,4 +286,56 @@ func CancelBooking(token, bookingID string) error {
 	}
 
 	return nil
+}
+
+func EditBooking(token, bookingID, remove, add, lateReturn, extension string) (int, error) {
+	err := session.ValidateToken(token)
+	if err != nil {
+		return -1, err
+	}
+
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return -1, err
+	}
+	user := bag.GetUser()
+
+	bookingIDValid, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return -1, err
+	}
+
+	booking, err := db.GetSingleBooking(bookingIDValid)
+	if err != nil {
+		return -1, err
+	}
+
+	if user.ID != booking.UserID {
+		return -1, errors.New("this booking does not belong to this user")
+	}
+
+	if booking.ProcessID == 10 {
+		return -1, errors.New("booking already canceled")
+	}
+
+	lateReturnValue, err := strconv.ParseBool(lateReturn)
+	if err != nil {
+		return -1, err
+	}
+	extensionValue, err := strconv.ParseBool(extension)
+	if err != nil {
+		return -1, err
+	}
+
+	if lateReturnValue {
+		extensionValue = false
+	}
+
+	if lateReturnValue != booking.LateReturn {
+
+	} else if extensionValue != booking.Extension {
+
+	}
+	// WIP
+	return 0, nil
 }

@@ -65,6 +65,7 @@ func main() {
 	http.HandleFunc("/bookingService/makePayment", makePaymentHandler)
 	http.HandleFunc("/bookingService/getUserBookings", getUsersBookingsHandler)
 	http.HandleFunc("/bookingService/cancelBooking", cancelBookingHandler)
+	http.HandleFunc("/bookingService/editBooking", editBookingHandler)
 
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
@@ -523,6 +524,47 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = bookingService.CancelBooking(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func editBookingHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf("editBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			log.Printf("editBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookingID := r.FormValue("bookingID")
+	remove := r.FormValue("remove")
+	add := r.FormValue("add")
+	lateReturn := r.FormValue("lateReturn")
+	extension := r.FormValue("extension")
+
+	if bookingID == "" || remove == "" || add == "" || lateReturn == "" || extension == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	err = bookingService.EditBooking(token.Value, bookingID, remove, add, lateReturn, extension)
 	if err != nil {
 		return
 	}

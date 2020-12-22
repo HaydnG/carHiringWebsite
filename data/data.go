@@ -11,6 +11,7 @@ type Booking struct {
 	UserID        int          `json:"userID"`
 	Start         timestamp    `json:"start"`
 	End           timestamp    `json:"end"`
+	Finish        timestamp    `json:"finish"`
 	TotalCost     float64      `json:"totalCost"`
 	AmountPaid    float64      `json:"amountPaid"`
 	LateReturn    bool         `json:"lateReturn"`
@@ -133,6 +134,10 @@ type OutputUser struct {
 	Verified     bool      `json:"Verified"`
 	Repeat       bool      `json:"Repeat"`
 	SessionToken string    `json:"SessionToken"`
+}
+
+type Response struct {
+	ID string `json:"ID"`
 }
 
 func (t timestamp) MarshalJSON() ([]byte, error) {
