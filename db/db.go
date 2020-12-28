@@ -144,6 +144,19 @@ func GetCar(id string) (*data.Car, error) {
 	return car, nil
 }
 
+//SELECT cars.*, fuelType.description, gearType.description, carType.description, size.description, colour.description
+//FROM carrental.cars
+//INNER JOIN fueltype ON cars.fuelType = fuelType.id
+//INNER JOIN gearType ON cars.gearType = gearType.id
+//INNER JOIN carType ON cars.carType = carType.id
+//INNER JOIN size ON cars.size = size.id
+//INNER JOIN colour ON cars.colour = colour.id
+//WHERE cars.fuelType = coalesce(1, cars.fuelType) AND
+//cars.gearType = coalesce(NULL, cars.gearType) AND
+//cars.carType = coalesce(NULL, cars.carType) AND
+//cars.size = coalesce(NULL, cars.size) AND
+//cars.colour = coalesce(NULL, cars.colour)
+
 func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
 	rows, err := conn.Query(`select a1.id, a1.description
 							from equipment as a1
@@ -179,14 +192,58 @@ func GetCarAccessories(start, end string) ([]*data.Accessory, error) {
 	return accessories, nil
 }
 
+func GetBookingHistory(bookingID int) ([]*data.BookingStatus, error) {
+	var (
+		completed time.Time
+		size      = 32
+	)
+
+	rows, err := conn.Query(`SELECT bookingstatus.id, bookingstatus.bookingID, bookingstatus.completed, bookingstatus.active, bookingstatus.adminID, bookingstatus.description,
+bookingstatus.processID, processtype.description, processtype.adminRequired, processtype.order, processtype.bookingPage
+FROM bookingstatus
+inner join processtype on processtype.id = bookingstatus.processID
+where bookingstatus.bookingID = ?
+order by bookingstatus.completed asc;`, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	statuses := make([]*data.BookingStatus, size)
+
+	count := 0
+	for rows.Next() {
+
+		status := &data.BookingStatus{}
+		if count > size {
+			statuses = append(statuses, status)
+		} else {
+			statuses[count] = status
+		}
+
+		err := rows.Scan(&status.ID, &status.BookingID, &completed, &status.Active, &status.AdminID, &status.Description,
+			&status.ProcessID, &status.ProcessDescription, &status.AdminRequired, &status.Order, &status.BookingPage)
+		if err != nil {
+			return nil, err
+		}
+		status.Completed = *data.ConvertDate(completed)
+
+		count++
+	}
+
+	statuses = statuses[:count]
+
+	return statuses, nil
+}
+
 func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
 	rows, err := conn.Query(`SELECT b.start, b.finish FROM bookings as b
 						WHERE ((? <= b.finish ) and (? >= b.start))
 						AND b.carID = ? 
 						AND (SELECT processID FROM bookingstatus 
 								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
-								ORDER BY bookingstatus.processID DESC
-								LIMIT 1) != 10
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								ORDER BY processtype.order DESC
+								LIMIT 1) != 11
 						LIMIT 30`, start, end, carID)
 	if err != nil {
 		return nil, err
@@ -213,12 +270,15 @@ func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
 }
 
 func BookingHasOverlap(start, end, carID string) (bool, error) {
+
 	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings AS b
 								WHERE ((? <= b.end ) AND (? >= b.start))
 								AND (SELECT processID FROM bookingstatus 
 								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
-								ORDER BY bookingstatus.processID DESC
-								LIMIT 1) != 10
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								ORDER BY processtype.order DESC
+								LIMIT 1) != 11
 								AND b.carID = ?`, start, end, carID)
 	overlaps := 0
 
@@ -257,17 +317,17 @@ func CreateBooking(carID, userID int, start, end, finish string, cost float64, l
 	return int(bookingID), nil
 }
 
-func InsertBookingStatus(bookingID, processID, adminID int, description string) (int, error) {
+func InsertBookingStatus(bookingID, processID, adminID, active int, description string) (int, error) {
 
 	//Prepared statements
-	insertBookingStatus, err := conn.Prepare(`INSERT INTO bookingstatus(bookingID, processID, completed, adminID, description)
-												VALUES(?, ?, ?, ?,?)`)
+	insertBookingStatus, err := conn.Prepare(`INSERT INTO bookingstatus(bookingID, processID, completed, active, adminID, description)
+												VALUES(?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer insertBookingStatus.Close()
 
-	res, err := insertBookingStatus.Exec(bookingID, processID, time.Now(), adminID, description)
+	res, err := insertBookingStatus.Exec(bookingID, processID, time.Now(), active, adminID, description)
 	if err != nil {
 		return 0, err
 	}
@@ -284,22 +344,100 @@ func InsertBookingStatus(bookingID, processID, adminID int, description string) 
 	return int(statusID), nil
 }
 
+func DeactivateBookingStatuses(bookingID int) error {
+
+	conn, err := conn.Exec(`UPDATE bookingstatus SET active = 0 WHERE (bookingID = ?)`, bookingID)
+	if err != nil {
+		return err
+	}
+
+	count, err := conn.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
+func SetBookingStatus(statusID int, active bool) error {
+
+	conn, err := conn.Exec(`UPDATE bookingstatus SET active = ? WHERE (id = ?)`, active, statusID)
+	if err != nil {
+		return err
+	}
+
+	count, err := conn.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
+//GetBookingProcessStatus returns the most recent process with processID specified
+func GetBookingProcessStatus(bookingID, processID int) (*data.BookingStatus, error) {
+	bookingStatus := &data.BookingStatus{}
+	var completed time.Time
+
+	conn := conn.QueryRow(`SELECT * FROM carrental.bookingstatus
+								WHERE bookingID = ? AND processID = ?
+								ORDER  BY completed DESC LIMIT 1`, bookingID, processID)
+	err := conn.Scan(&bookingStatus.ID, &bookingStatus.BookingID, &bookingStatus.ProcessID, &completed, &bookingStatus.Active, &bookingStatus.AdminID, &bookingStatus.Description)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	bookingStatus.Completed = *data.ConvertDate(completed)
+
+	return bookingStatus, nil
+}
+
 func AddBookingEquipment(bookingID int, equipment []string) error {
 
 	//Prepared statements
-	insertBookingStatus, err := conn.Prepare(`INSERT INTO equipmentbooking(bookingID, equipmentID)
+	insertEquipment, err := conn.Prepare(`INSERT INTO equipmentbooking(bookingID, equipmentID)
 												VALUES(?, ?)`)
 	if err != nil {
 		return err
 	}
-	defer insertBookingStatus.Close()
+	defer insertEquipment.Close()
 
 	for _, v := range equipment {
 		if v == "" {
 			return errors.New("invalid equipment param")
 		}
 
-		_, err := insertBookingStatus.Exec(bookingID, v)
+		_, err := insertEquipment.Exec(bookingID, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func RemoveBookingEquipment(bookingID int, equipment []string) error {
+
+	removeEquipment, err := conn.Prepare(`DELETE FROM equipmentbooking WHERE (bookingID = ?) and (equipmentID = ?);
+`)
+	if err != nil {
+		return err
+	}
+	defer removeEquipment.Close()
+
+	for _, v := range equipment {
+		if v == "" {
+			return errors.New("invalid equipment param")
+		}
+
+		_, err := removeEquipment.Exec(bookingID, v)
 		if err != nil {
 			return err
 		}
@@ -345,10 +483,14 @@ func GetSingleBooking(bookingID int) (*data.Booking, error) {
 		created time.Time
 	)
 
-	row := conn.QueryRow(`SELECT bookings.*, bookingstatus.processID FROM carrental.bookings, carrental.bookingstatus 
-WHERE bookings.id = ? 
-AND bookingstatus.bookingID = bookings.id
-ORDER BY bookingstatus.completed DESC LIMIT 1`, bookingID)
+	row := conn.QueryRow(`SELECT b.*, (SELECT processID FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								AND processtype.bookingPage = 1
+								ORDER BY processtype.order DESC
+								LIMIT 1) as processID FROM bookings as b 
+								WHERE b.id = ?;`, bookingID)
 
 	booking := &data.Booking{}
 
@@ -376,7 +518,10 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.extension, b.created, b.bookingLength,
 								(SELECT processID FROM bookingstatus 
 								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
-								ORDER BY bookingstatus.processID DESC
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								AND processtype.bookingPage = 1
+								ORDER BY processtype.order DESC
 								LIMIT 1) as processID,
 								cars.id as carID, cars.cost, cars.description, cars.image, cars.seats, fuelType.description, gearType.description, carType.description, size.description, colour.description
 								FROM bookings AS b
@@ -427,6 +572,24 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 
 func UpdateBookingPayment(bookingID, userID int, amount float64) error {
 	result, err := conn.Exec(`UPDATE bookings SET amountPaid = ? WHERE (id = ? AND userID = ?)`, amount, bookingID, userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
+func UpdateBooking(bookingID, userID int, amount, bookingLength float64, lateReturn, extension bool) error {
+	result, err := conn.Exec(`UPDATE bookings SET totalCost = ?, lateReturn = ?, extension = ?, bookingLength = ?
+								WHERE (id = ? AND userID = ?)`, amount, lateReturn, extension, bookingLength, bookingID, userID)
 	if err != nil {
 		return err
 	}

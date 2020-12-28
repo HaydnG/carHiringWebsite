@@ -5,6 +5,8 @@ import (
 	"carHiringWebsite/db"
 	"carHiringWebsite/session"
 	"errors"
+	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -13,7 +15,19 @@ import (
 const (
 	lateReturnIncrease = 0.6
 	extensionIncrease  = 0.5
-	PaymentNeeded      = iota
+)
+const (
+	awaitingPayment = iota + 1
+	paymentAccepted
+	awaitingConfirmation
+	bookingConfirmed
+	bookingEdited
+	editAwaitingPayment
+	editPaymentAccepted
+	queryingRefund
+	refundRejected
+	refundIssued
+	canceledBooking
 )
 
 func Create(token, start, end, carID, late, extension, accessories, days string) (*data.Booking, error) {
@@ -71,7 +85,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		calculatedDays += extensionIncrease
 	}
 
-	if calculatedDays < 0.5 || (calculatedDays > 14 && lateValue) || (calculatedDays > 14.1 && lateValue) {
+	if calculatedDays < 0.5 || (calculatedDays > 14 && !lateValue) || (calculatedDays > 14.1 && lateValue) {
 		return nil, errors.New("booking duration out of bounds")
 	}
 
@@ -132,14 +146,14 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		return nil, err
 	}
 
-	_, err = db.InsertBookingStatus(bookingID, 1, 0, "")
+	_, err = db.InsertBookingStatus(bookingID, awaitingPayment, 0, 1, "")
 	if err != nil {
 		return nil, err
 	}
 
 	if len(accessories) != 0 {
 		accessory := strings.Split(accessories, ",")
-		if len(accessory) != 0 {
+		if len(accessory) != 0 && validateEquipmentList(accessory, nil) {
 			err := db.AddBookingEquipment(bookingID, accessory)
 			if err != nil {
 				return nil, err
@@ -185,7 +199,11 @@ func MakePayment(token, bookingID string) error {
 		return err
 	}
 
-	if booking.ProcessID != 1 {
+	if booking.UserID != user.ID {
+		return errors.New("this booking does not belong to this user")
+	}
+
+	if booking.ProcessID != awaitingPayment {
 		return errors.New("booking not awaiting payment")
 	}
 
@@ -194,17 +212,30 @@ func MakePayment(token, bookingID string) error {
 		return errors.New("no payment needed")
 	}
 
+	status, err := db.GetBookingProcessStatus(booking.ID, awaitingPayment)
+	if err != nil {
+		return err
+	} else if status == nil || !status.Active {
+		return errors.New("booking not awaiting payment")
+	}
+
 	err = db.UpdateBookingPayment(booking.ID, user.ID, amountDue)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, 2, 0, "Made payment of £"+strconv.FormatFloat(amountDue, 'f', 2, 64))
+	_, err = db.InsertBookingStatus(booking.ID, paymentAccepted, 0, 0, "Made payment of £"+strconv.FormatFloat(amountDue, 'f', 2, 64))
 	if err != nil {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, 3, 0, "")
+	// disable awaiting payment status
+	err = db.SetBookingStatus(status.ID, false)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, awaitingConfirmation, 0, 1, "")
 	if err != nil {
 		return err
 	}
@@ -276,11 +307,21 @@ func CancelBooking(token, bookingID string) error {
 		return errors.New("this booking does not belong to this user")
 	}
 
-	if booking.ProcessID == 10 {
+	if booking.ProcessID == canceledBooking {
 		return errors.New("booking already canceled")
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, 10, 0, "user canceled booking")
+	err = db.DeactivateBookingStatuses(booking.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, queryingRefund, 0, 1, "Automatic refund query requested")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, canceledBooking, 0, 1, "User canceled booking")
 	if err != nil {
 		return err
 	}
@@ -288,54 +329,267 @@ func CancelBooking(token, bookingID string) error {
 	return nil
 }
 
-func EditBooking(token, bookingID, remove, add, lateReturn, extension string) (int, error) {
+func GetHistory(token, bookingID string) ([]*data.BookingStatus, error) {
 	err := session.ValidateToken(token)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	bag, err := session.GetByToken(token)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	user := bag.GetUser()
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	booking, err := db.GetSingleBooking(bookingIDValid)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	if user.ID != booking.UserID {
-		return -1, errors.New("this booking does not belong to this user")
+		return nil, errors.New("this booking does not belong to this user")
 	}
 
-	if booking.ProcessID == 10 {
-		return -1, errors.New("booking already canceled")
+	history, err := db.GetBookingHistory(booking.ID)
+
+	return history, err
+}
+
+func EditBooking(token, bookingID, remove, add, lateReturn, extension string) error {
+	edited := false
+	var description string
+	var AddAccessory, RemoveAccessory []string
+	var amountDue float64
+
+	err := session.ValidateToken(token)
+	if err != nil {
+		return err
+	}
+
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return err
+	}
+	user := bag.GetUser()
+
+	bookingIDValid, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookingIDValid)
+	if err != nil {
+		return err
+	}
+
+	if user.ID != booking.UserID {
+		return errors.New("this booking does not belong to this user")
+	}
+
+	if booking.ProcessID == canceledBooking {
+		return errors.New("booking already canceled")
 	}
 
 	lateReturnValue, err := strconv.ParseBool(lateReturn)
 	if err != nil {
-		return -1, err
+		return err
 	}
 	extensionValue, err := strconv.ParseBool(extension)
 	if err != nil {
-		return -1, err
+		return err
 	}
 
 	if lateReturnValue {
 		extensionValue = false
 	}
 
-	if lateReturnValue != booking.LateReturn {
+	days := booking.BookingLength
+	newCost := booking.TotalCost
+	if lateReturnValue != booking.LateReturn || extensionValue != booking.Extension {
+		dailyCost := booking.TotalCost / booking.BookingLength
 
-	} else if extensionValue != booking.Extension {
+		if booking.LateReturn {
+			days = days - lateReturnIncrease
+		} else if booking.Extension {
+			days = days - extensionIncrease
+		}
 
+		if lateReturnValue {
+			days = days + lateReturnIncrease
+		} else if extensionValue {
+			days = days + extensionIncrease
+		}
+
+		newCost = dailyCost * days
+
+		description += fmt.Sprintf("£%.2f -> £%.2f | ", booking.TotalCost, newCost)
+
+		if lateReturnValue != booking.LateReturn {
+			description += fmt.Sprintf("LateReturn: %t | ", lateReturnValue)
+		} else if extensionValue != booking.Extension {
+			description += fmt.Sprintf("Extension: %t | ", extensionValue)
+		}
+
+		err := db.UpdateBooking(booking.ID, user.ID, newCost, days, lateReturnValue, extensionValue)
+		if err != nil {
+			return err
+		}
+
+		amountDue = newCost - booking.AmountPaid
+		edited = true
 	}
-	// WIP
-	return 0, nil
+
+	if len(add) != 0 {
+		AddAccessory = strings.Split(add, ",")
+	}
+	if len(remove) != 0 {
+		RemoveAccessory = strings.Split(remove, ",")
+	}
+
+	if validateEquipmentList(AddAccessory, RemoveAccessory) {
+		accessories, err := db.GetCarAccessories("0", "0")
+		if err != nil {
+			return err
+		}
+
+		if len(AddAccessory) != 0 {
+			names, err := GetAccessoryNames(accessories, AddAccessory)
+			if err != nil {
+				return err
+			}
+
+			err = db.AddBookingEquipment(booking.ID, AddAccessory)
+			if err != nil {
+				return err
+			}
+			description += fmt.Sprint("ADD: ")
+			for i, v := range names {
+				description += fmt.Sprintf("%s", v)
+				if i != len(names)-1 {
+					description += fmt.Sprint(", ")
+				} else {
+					description += fmt.Sprint(" | ")
+				}
+			}
+		}
+		if len(RemoveAccessory) != 0 {
+			names, err := GetAccessoryNames(accessories, RemoveAccessory)
+			if err != nil {
+				return err
+			}
+
+			err = db.RemoveBookingEquipment(booking.ID, RemoveAccessory)
+			if err != nil {
+				return err
+			}
+			description += fmt.Sprint("REMOVE: ")
+			for i, v := range names {
+				description += fmt.Sprintf("%s", v)
+				if i != len(names)-1 {
+					description += fmt.Sprint(", ")
+				} else {
+					description += fmt.Sprint(" | ")
+				}
+			}
+
+		}
+		edited = true
+	}
+
+	if edited {
+		_, err = db.InsertBookingStatus(booking.ID, bookingEdited, 0, 0, description)
+		if err != nil {
+			return err
+		}
+
+		if booking.ProcessID != awaitingPayment {
+			status, err := db.GetBookingProcessStatus(booking.ID, editAwaitingPayment)
+			if err != nil {
+				return err
+			}
+
+			if status != nil && status.Active {
+				err := db.SetBookingStatus(status.ID, false)
+				if err != nil {
+					return err
+				}
+			}
+			if amountDue != 0 {
+				paymentDesc := ""
+				if amountDue > 0 {
+					paymentDesc = fmt.Sprintf("Need to pay £%.2f on Collection", math.Abs(amountDue))
+				} else {
+					paymentDesc = fmt.Sprintf("Refund of £%.2f on Collection", math.Abs(amountDue))
+				}
+
+				_, err = db.InsertBookingStatus(booking.ID, editAwaitingPayment, 0, 1, paymentDesc)
+				if err != nil {
+					return err
+				}
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func GetAccessoryNames(acces []*data.Accessory, ids []string) ([]string, error) {
+
+	if len(ids) <= 0 || len(acces) <= 0 {
+		return nil, errors.New("GetAccessoryNames list is empty")
+	}
+
+	names := make([]string, len(ids))
+	count := 0
+
+	for _, v := range ids {
+		id, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, v := range acces {
+			if v.ID == id {
+				names[count] = v.Description
+				count++
+				break
+			}
+		}
+	}
+
+	return names, nil
+
+}
+
+func validateEquipmentList(add, remove []string) bool {
+	var list []string
+
+	if (add == nil || len(add) > 10) && (remove == nil || len(remove) > 10) {
+		return false
+	}
+
+	if remove != nil && len(remove) > 0 {
+		list = append(add, remove...)
+	} else {
+		list = add
+	}
+
+	for i := 0; i < len(list)-1; i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[i] == "" || list[j] == "" {
+				return false
+			}
+			if strings.Compare(list[i], list[j]) == 0 {
+				return false
+			}
+		}
+	}
+
+	return true
 }

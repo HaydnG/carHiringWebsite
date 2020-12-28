@@ -136,6 +136,20 @@ type OutputUser struct {
 	SessionToken string    `json:"SessionToken"`
 }
 
+type BookingStatus struct {
+	ID                 int       `json:"ID"`
+	BookingID          int       `json:"BookingID"`
+	Completed          timestamp `json:"Completed"`
+	Active             bool      `json:"Active"`
+	AdminID            int       `json:"AdminID"`
+	Description        string    `json:"Description"`
+	ProcessID          int       `json:"ProcessID"`
+	ProcessDescription string    `json:"ProcessDescription"`
+	AdminRequired      bool      `json:"AdminRequired"`
+	Order              int       `json:"Order"`
+	BookingPage        bool      `json:"BookingPage"`
+}
+
 type Response struct {
 	ID string `json:"ID"`
 }
