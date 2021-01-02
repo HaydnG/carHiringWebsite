@@ -12,12 +12,14 @@ type sessionStore struct {
 	sync.RWMutex
 	storeByToken map[string]*sessionBag
 	storeByEmail map[string]*sessionBag
+	count        int
 }
 
 func (ss *sessionStore) Add(bag *sessionBag) {
 	ss.Lock()
 	ss.storeByToken[bag.token] = bag
 	ss.storeByEmail[bag.user.Email] = bag
+	ss.count++
 	ss.Unlock()
 }
 
@@ -33,6 +35,10 @@ func (ss *sessionStore) GetByToken(token string) (*sessionBag, error) {
 		return nil, InactiveSession
 	}
 	return bag, nil
+}
+
+func (ss *sessionStore) CountSessions() int {
+	return ss.count
 }
 
 func (ss *sessionStore) GetByEmail(email string) (*sessionBag, error) {
@@ -60,6 +66,7 @@ func (ss *sessionStore) Delete(bag *sessionBag) {
 	if _, ok := ss.storeByToken[bag.token]; ok {
 		delete(ss.storeByToken, bag.token)
 	}
+	ss.count--
 }
 
 type sessionBag struct {

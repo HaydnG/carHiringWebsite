@@ -22,7 +22,12 @@ func init() {
 		RWMutex:      sync.RWMutex{},
 		storeByToken: make(map[string]*sessionBag),
 		storeByEmail: make(map[string]*sessionBag),
+		count:        0,
 	}
+}
+
+func CountSesssions() int {
+	return sessions.CountSessions()
 }
 
 func New(user *data.User) string {

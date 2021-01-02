@@ -3,7 +3,7 @@ package bookingService
 import (
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
-	"carHiringWebsite/session"
+	"carHiringWebsite/services/userService"
 	"errors"
 	"fmt"
 	"math"
@@ -17,32 +17,29 @@ const (
 	extensionIncrease  = 0.5
 )
 const (
-	awaitingPayment = iota + 1
-	paymentAccepted
-	awaitingConfirmation
-	bookingConfirmed
-	bookingEdited
-	editAwaitingPayment
-	editPaymentAccepted
-	queryingRefund
-	refundRejected
-	refundIssued
-	canceledBooking
+	AwaitingPayment = iota + 1
+	PaymentAccepted
+	AwaitingConfirmation
+	BookingConfirmed
+	BookingEdited
+	EditAwaitingPayment
+	EditPaymentAccepted
+	QueryingRefund
+	RefundRejected
+	RefundIssued
+	CanceledBooking
+	CollectedBooking
+	ReturnedBooking
+	CompletedBooking
 )
 
 func Create(token, start, end, carID, late, extension, accessories, days string) (*data.Booking, error) {
 	var finishString string
 
-	err := session.ValidateToken(token)
+	user, err := userService.GetUserFromSession(token)
 	if err != nil {
 		return nil, err
 	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	user := bag.GetUser()
 
 	startNum, err := strconv.ParseInt(start, 10, 64)
 	if err != nil {
@@ -115,6 +112,9 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	if car == nil {
 		return nil, errors.New("problem retrieving car")
 	}
+	if car.Disabled {
+		return nil, errors.New("car disabled")
+	}
 	price := car.Cost * daysValue
 
 	startString := startTime.Format("2006-01-02")
@@ -146,7 +146,7 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		return nil, err
 	}
 
-	_, err = db.InsertBookingStatus(bookingID, awaitingPayment, 0, 1, "")
+	_, err = db.InsertBookingStatus(bookingID, AwaitingPayment, 0, 1, "")
 	if err != nil {
 		return nil, err
 	}
@@ -178,16 +178,10 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 }
 
 func MakePayment(token, bookingID string) error {
-	err := session.ValidateToken(token)
+	user, err := userService.GetUserFromSession(token)
 	if err != nil {
 		return err
 	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return err
-	}
-	user := bag.GetUser()
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
 	if err != nil {
@@ -203,7 +197,7 @@ func MakePayment(token, bookingID string) error {
 		return errors.New("this booking does not belong to this user")
 	}
 
-	if booking.ProcessID != awaitingPayment {
+	if booking.ProcessID != AwaitingPayment {
 		return errors.New("booking not awaiting payment")
 	}
 
@@ -212,7 +206,7 @@ func MakePayment(token, bookingID string) error {
 		return errors.New("no payment needed")
 	}
 
-	status, err := db.GetBookingProcessStatus(booking.ID, awaitingPayment)
+	status, err := db.GetBookingProcessStatus(booking.ID, AwaitingPayment)
 	if err != nil {
 		return err
 	} else if status == nil || !status.Active {
@@ -224,7 +218,7 @@ func MakePayment(token, bookingID string) error {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, paymentAccepted, 0, 0, "Made payment of £"+strconv.FormatFloat(amountDue, 'f', 2, 64))
+	_, err = db.InsertBookingStatus(booking.ID, PaymentAccepted, 0, 0, "Made payment of £"+strconv.FormatFloat(amountDue, 'f', 2, 64))
 	if err != nil {
 		return err
 	}
@@ -235,7 +229,7 @@ func MakePayment(token, bookingID string) error {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, awaitingConfirmation, 0, 1, "")
+	_, err = db.InsertBookingStatus(booking.ID, AwaitingConfirmation, 0, 1, "")
 	if err != nil {
 		return err
 	}
@@ -244,16 +238,10 @@ func MakePayment(token, bookingID string) error {
 }
 
 func GetUsersBookings(token string) (map[int][]*data.Booking, error) {
-	err := session.ValidateToken(token)
+	user, err := userService.GetUserFromSession(token)
 	if err != nil {
 		return nil, err
 	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	user := bag.GetUser()
 
 	bookings, err := db.GetUsersBookings(user.ID)
 	if err != nil {
@@ -282,16 +270,12 @@ func organiseBookings(bookings []*data.Booking) map[int][]*data.Booking {
 }
 
 func CancelBooking(token, bookingID string) error {
-	err := session.ValidateToken(token)
+	adminID := 0
+	cancelMsg := "User canceled booking"
+	user, err := userService.GetUserFromSession(token)
 	if err != nil {
 		return err
 	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return err
-	}
-	user := bag.GetUser()
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
 	if err != nil {
@@ -303,11 +287,14 @@ func CancelBooking(token, bookingID string) error {
 		return err
 	}
 
-	if user.ID != booking.UserID {
+	if user.ID != booking.UserID && !user.Admin {
 		return errors.New("this booking does not belong to this user")
+	} else if user.Admin {
+		adminID = user.ID
+		cancelMsg = "Admin canceled booking"
 	}
 
-	if booking.ProcessID == canceledBooking {
+	if booking.ProcessID == CanceledBooking {
 		return errors.New("booking already canceled")
 	}
 
@@ -316,12 +303,15 @@ func CancelBooking(token, bookingID string) error {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, queryingRefund, 0, 1, "Automatic refund query requested")
-	if err != nil {
-		return err
+	if booking.AmountPaid > 0 {
+		_, err = db.InsertBookingStatus(booking.ID, QueryingRefund, adminID, 1, "Automatic refund query requested")
+		if err != nil {
+			return err
+		}
+
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, canceledBooking, 0, 1, "User canceled booking")
+	_, err = db.InsertBookingStatus(booking.ID, CanceledBooking, adminID, 1, cancelMsg)
 	if err != nil {
 		return err
 	}
@@ -330,16 +320,10 @@ func CancelBooking(token, bookingID string) error {
 }
 
 func GetHistory(token, bookingID string) ([]*data.BookingStatus, error) {
-	err := session.ValidateToken(token)
+	user, err := userService.GetUserFromSession(token)
 	if err != nil {
 		return nil, err
 	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return nil, err
-	}
-	user := bag.GetUser()
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
 	if err != nil {
@@ -351,7 +335,7 @@ func GetHistory(token, bookingID string) ([]*data.BookingStatus, error) {
 		return nil, err
 	}
 
-	if user.ID != booking.UserID {
+	if user.ID != booking.UserID && !user.Admin {
 		return nil, errors.New("this booking does not belong to this user")
 	}
 
@@ -361,21 +345,13 @@ func GetHistory(token, bookingID string) ([]*data.BookingStatus, error) {
 }
 
 func EditBooking(token, bookingID, remove, add, lateReturn, extension string) error {
+	adminID := 0
 	edited := false
 	var description string
 	var AddAccessory, RemoveAccessory []string
 	var amountDue float64
 
-	err := session.ValidateToken(token)
-	if err != nil {
-		return err
-	}
-
-	bag, err := session.GetByToken(token)
-	if err != nil {
-		return err
-	}
-	user := bag.GetUser()
+	user, err := userService.GetUserFromSession(token)
 
 	bookingIDValid, err := strconv.Atoi(bookingID)
 	if err != nil {
@@ -387,12 +363,14 @@ func EditBooking(token, bookingID, remove, add, lateReturn, extension string) er
 		return err
 	}
 
-	if user.ID != booking.UserID {
+	if user.ID != booking.UserID && !user.Admin {
 		return errors.New("this booking does not belong to this user")
+	} else if user.Admin {
+		adminID = user.ID
 	}
 
-	if booking.ProcessID == canceledBooking {
-		return errors.New("booking already canceled")
+	if booking.ProcessID > BookingConfirmed {
+		return errors.New("booking not in an editable state")
 	}
 
 	lateReturnValue, err := strconv.ParseBool(lateReturn)
@@ -411,6 +389,10 @@ func EditBooking(token, bookingID, remove, add, lateReturn, extension string) er
 	days := booking.BookingLength
 	newCost := booking.TotalCost
 	if lateReturnValue != booking.LateReturn || extensionValue != booking.Extension {
+		if booking.ProcessID == BookingConfirmed {
+			return errors.New("extension values cannot be changed after booking confirmation")
+		}
+
 		dailyCost := booking.TotalCost / booking.BookingLength
 
 		if booking.LateReturn {
@@ -435,7 +417,7 @@ func EditBooking(token, bookingID, remove, add, lateReturn, extension string) er
 			description += fmt.Sprintf("Extension: %t | ", extensionValue)
 		}
 
-		err := db.UpdateBooking(booking.ID, user.ID, newCost, days, lateReturnValue, extensionValue)
+		err := db.UpdateBooking(booking.ID, newCost, days, lateReturnValue, extensionValue)
 		if err != nil {
 			return err
 		}
@@ -502,13 +484,13 @@ func EditBooking(token, bookingID, remove, add, lateReturn, extension string) er
 	}
 
 	if edited {
-		_, err = db.InsertBookingStatus(booking.ID, bookingEdited, 0, 0, description)
+		_, err = db.InsertBookingStatus(booking.ID, BookingEdited, adminID, 0, description)
 		if err != nil {
 			return err
 		}
 
-		if booking.ProcessID != awaitingPayment {
-			status, err := db.GetBookingProcessStatus(booking.ID, editAwaitingPayment)
+		if booking.ProcessID != AwaitingPayment {
+			status, err := db.GetBookingProcessStatus(booking.ID, EditAwaitingPayment)
 			if err != nil {
 				return err
 			}
@@ -527,7 +509,7 @@ func EditBooking(token, bookingID, remove, add, lateReturn, extension string) er
 					paymentDesc = fmt.Sprintf("Refund of £%.2f on Collection", math.Abs(amountDue))
 				}
 
-				_, err = db.InsertBookingStatus(booking.ID, editAwaitingPayment, 0, 1, paymentDesc)
+				_, err = db.InsertBookingStatus(booking.ID, EditAwaitingPayment, adminID, 1, paymentDesc)
 				if err != nil {
 					return err
 				}

@@ -20,12 +20,15 @@ func GetAllCars() ([]*data.Car, error) {
 
 func GetCar(id string) (*data.Car, error) {
 
-	cars, err := db.GetCar(id)
+	car, err := db.GetCar(id)
 	if err != nil {
 		return nil, err
 	}
+	if car.Disabled {
+		return nil, errors.New("car disabled")
+	}
 
-	return cars, nil
+	return car, nil
 }
 
 func GetCarAccessories(start, end string) ([]*data.Accessory, error) {

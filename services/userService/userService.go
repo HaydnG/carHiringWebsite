@@ -146,3 +146,17 @@ func isPasswordValid(password string) bool {
 	}
 	return true
 }
+
+func GetUserFromSession(token string) (*data.User, error) {
+	err := session.ValidateToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return bag.GetUser(), nil
+}

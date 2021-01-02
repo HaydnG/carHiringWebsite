@@ -23,29 +23,52 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ad2caa87-5d71-4ae4-a425-c7d7c54bfea4" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/logged-in-guard.service.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-accessories-page/admin-accessories-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-booking-page/admin-booking-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-booking-table/admin-booking-table.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-booking-view-page/admin-booking-view-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-car-page/admin-car-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-page/admin-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-user-page/admin-user-page.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/admin/admin.service.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/admin/admin.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/nav/nav.service.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/tools/tools.service.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/user-card/booking-card.component.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/services/adminService/adminService.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/angular.json" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/angular.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app-routing.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app-routing.module.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app.module.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-card/booking-card.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-card/booking-card.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-history/booking-history.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-history/booking-history.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-page/booking-page.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-page/booking-page.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/cancel-booking/cancel-booking.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/cancel-booking/cancel-booking.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/calendarH/calendarH.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/calendarH/calendarH.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-card/car-card.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-card/car-card.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-list/car-list.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-list/car-list.component.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-page/car-page.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/car-page/car-page.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/edit-booking/edit-booking.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/edit-booking/edit-booking.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/logged-in-guard.guard.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/logged-in-guard.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/logged-in-guard.service.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/navbar/navbar.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/navbar/navbar.component.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/Booking.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/Booking.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/booking.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/booking.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/car/car.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/car/car.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/user/User.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/user/User.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/user/user.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/user/user.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/index.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cars/car1.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/cars/car1.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data/data.go" beforeDir="false" afterPath="$PROJECT_DIR$/data/data.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db/db.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/public/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/main.7f6314004410ce35a310.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/main.20cd1c6828ff1c03fefd.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/styles.64db3b29ef923399a1b4.css" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/services/bookingService/bookingService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/bookingService/bookingService.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/carService/carService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/carService/carService.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/userService/userService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/userService/userService.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/session/session.go" beforeDir="false" afterPath="$PROJECT_DIR$/session/session.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/session/sessionStore.go" beforeDir="false" afterPath="$PROJECT_DIR$/session/sessionStore.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -177,10 +200,10 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="740" y="262" key="#com.intellij.ide.macro.MacrosDialog/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1603460430174" />
-    <state width="1003" height="863" key="DebuggerActiveHint" timestamp="1609084433632">
-      <screen x="1920" y="0" width="1920" height="1040" />
+    <state width="1171" height="863" key="DebuggerActiveHint" timestamp="1609519675376">
+      <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1171" height="863" key="DebuggerActiveHint/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1608762747521" />
+    <state width="1171" height="863" key="DebuggerActiveHint/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609519675376" />
     <state width="1003" height="863" key="DebuggerActiveHint/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609084433632" />
     <state x="629" y="298" width="662" height="678" key="EditFileWatcherDialog" timestamp="1604178433681">
       <screen x="0" y="0" width="1920" height="1040" />
@@ -190,46 +213,46 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="739" y="287" key="FileChooserDialogImpl/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1603461233018" />
-    <state width="1355" height="96" key="GridCell.Tab.0.bottom" timestamp="1609113269117">
+    <state width="1336" height="212" key="GridCell.Tab.0.bottom" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269117" />
-    <state width="1355" height="96" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510807" />
-    <state width="1355" height="96" key="GridCell.Tab.0.center" timestamp="1609113269117">
+    <state width="1336" height="212" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279438" />
+    <state width="1336" height="212" key="GridCell.Tab.0.center" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269117" />
-    <state width="1355" height="96" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510807" />
-    <state width="1355" height="96" key="GridCell.Tab.0.left" timestamp="1609113269117">
+    <state width="1336" height="212" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279438" />
+    <state width="1336" height="212" key="GridCell.Tab.0.left" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269117" />
-    <state width="1355" height="96" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510807" />
-    <state width="1355" height="96" key="GridCell.Tab.0.right" timestamp="1609113269117">
+    <state width="1336" height="212" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279438" />
+    <state width="1336" height="212" key="GridCell.Tab.0.right" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269117" />
-    <state width="1355" height="96" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510807" />
-    <state width="1355" height="96" key="GridCell.Tab.1.bottom" timestamp="1609113269061">
+    <state width="1336" height="212" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279438" />
+    <state width="1336" height="212" key="GridCell.Tab.1.bottom" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269061" />
-    <state width="1355" height="96" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510763" />
-    <state width="1355" height="96" key="GridCell.Tab.1.center" timestamp="1609113269061">
+    <state width="1336" height="212" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279404" />
+    <state width="1336" height="212" key="GridCell.Tab.1.center" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269061" />
-    <state width="1355" height="96" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510763" />
-    <state width="1355" height="96" key="GridCell.Tab.1.left" timestamp="1609113269061">
+    <state width="1336" height="212" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279404" />
+    <state width="1336" height="212" key="GridCell.Tab.1.left" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269061" />
-    <state width="1355" height="96" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510763" />
-    <state width="1355" height="96" key="GridCell.Tab.1.right" timestamp="1609113269061">
+    <state width="1336" height="212" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279404" />
+    <state width="1336" height="212" key="GridCell.Tab.1.right" timestamp="1609539427246">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1355" height="96" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609113269061" />
-    <state width="1355" height="96" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609112510763" />
+    <state width="1336" height="212" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609539427246" />
+    <state width="1336" height="212" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1609533279404" />
     <state x="461" y="165" key="SettingsEditor" timestamp="1604178435097">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
@@ -257,7 +280,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/db/db.go</url>
-          <line>133</line>
+          <line>136</line>
           <option name="timeStamp" value="7" />
         </line-breakpoint>
       </breakpoints>

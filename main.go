@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
+	"carHiringWebsite/services/adminService"
 	"carHiringWebsite/services/bookingService"
 	"carHiringWebsite/services/carService"
 	"carHiringWebsite/services/userService"
@@ -68,6 +69,16 @@ func main() {
 	http.HandleFunc("/bookingService/history", historyBookingHandler)
 	http.HandleFunc("/bookingService/editBooking", editBookingHandler)
 
+	http.HandleFunc("/adminService/getBookingStats", getBookingStatsHandler)
+	http.HandleFunc("/adminService/getUserStats", getUserStatsHandler)
+	http.HandleFunc("/adminService/getCarStats", getCarStatsHandler)
+	http.HandleFunc("/adminService/getAccessoryStats", getAccessoryStatsHandler)
+	http.HandleFunc("/adminService/getSearchedBookings", getSearchedBookingsHandler)
+	http.HandleFunc("/adminService/getAwaitingBookings", getAwaitingBookingsHandler)
+	http.HandleFunc("/adminService/getQueryingRefundBookings", getQueryingRefundBookings)
+	http.HandleFunc("/adminService/getBookingStatuses", getBookingStatusesHandler)
+	http.HandleFunc("/adminService/getBooking", getAdminBookingHandler)
+	http.HandleFunc("/adminService/progressBooking", progressBookingHandler)
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -108,7 +119,6 @@ func registrationHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("registrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("registrationHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -166,7 +176,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("loginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("loginHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -210,7 +219,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("logoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("logoutHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -244,7 +252,6 @@ func sessionCheckHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("sessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("sessionCheckHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -283,7 +290,6 @@ func setAllCarsHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("setAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("setAllCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -311,7 +317,6 @@ func getCarHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("GetCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("GetCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -345,7 +350,6 @@ func getCarAccessoriesHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("getCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("getCarAccessoriesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -380,7 +384,6 @@ func getCarBookingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("getCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("getCarBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -418,7 +421,6 @@ func createBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("CreateBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("CreateBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -464,7 +466,6 @@ func makePaymentHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("makePaymentHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("makePaymentHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -501,7 +502,6 @@ func cancelBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("cancelBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("cancelBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -538,7 +538,6 @@ func historyBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("historyBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("historyBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -578,7 +577,6 @@ func editBookingHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("editBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("editBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -619,7 +617,6 @@ func getUsersBookingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err != nil {
-			fmt.Printf("getUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			log.Printf("getUsersBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -647,6 +644,346 @@ func getUsersBookingsHandler(w http.ResponseWriter, r *http.Request) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(&bookings)
+	w.Write(buffer.Bytes())
+}
+
+func getBookingStatsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getBookingStatsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	stats, err := adminService.GetBookingStats(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
+	w.Write(buffer.Bytes())
+}
+
+func getUserStatsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getUserStatsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	stats, err := adminService.GetUserStats(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
+	w.Write(buffer.Bytes())
+}
+
+func getBookingStatusesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getBookingStatusesHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	status, err := adminService.GetBookingStatuses(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&status)
+	w.Write(buffer.Bytes())
+}
+
+func getQueryingRefundBookings(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getQueryingRefundBookings error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookings, err := adminService.GetQueryingRefundBookings(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&bookings)
+	w.Write(buffer.Bytes())
+}
+
+func getAwaitingBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getAwaitingBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	status := r.FormValue("status")
+	limit := r.FormValue("limit")
+	if status == "" || limit == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	bookings, err := adminService.GetAwaitingBookings(token.Value, status, limit)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&bookings)
+	w.Write(buffer.Bytes())
+}
+
+func progressBookingHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("progressBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookingID := r.FormValue("bookingID")
+	if bookingID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	err = adminService.ProgressBooking(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func getAdminBookingHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getAdminBookingHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	bookingID := r.FormValue("bookingID")
+	if bookingID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	adminBooking, err := adminService.GetBooking(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&adminBooking)
+	w.Write(buffer.Bytes())
+}
+
+func getSearchedBookingsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getSearchedBookingsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	userSearch := r.FormValue("userSearch")
+	bookingSearch := r.FormValue("bookingSearch")
+	statusFilter := r.FormValue("statusFilter")
+
+	stats, err := adminService.GetSearchedBookings(token.Value, userSearch, bookingSearch, statusFilter)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
+	w.Write(buffer.Bytes())
+}
+
+func getAccessoryStatsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getAccessoryStatsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	stats, err := adminService.GetAccessoryStats(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
+	w.Write(buffer.Bytes())
+}
+
+func getCarStatsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getCarStatsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	stats, err := adminService.GetCarStats(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
 	w.Write(buffer.Bytes())
 }
 

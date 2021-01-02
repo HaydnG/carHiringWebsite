@@ -5,22 +5,86 @@ import (
 	"time"
 )
 
+type BookingStat struct {
+	ProcessID     int    `json:"ProcessID"`
+	Description   string `json:"Description"`
+	Count         int    `json:"Count"`
+	AdminRequired bool   `json:"AdminRequired"`
+}
+
+type UserStat struct {
+	AdminCount       int `json:"AdminCount"`
+	BlackListedCount int `json:"BlackListedCount"`
+	RepeatUsersCount int `json:"RepeatUsersCount"`
+	UserCount        int `json:"UserCount"`
+	ActiveUsers      int `json:"ActiveUsers"`
+}
+
+type CarStat struct {
+	CarCount       int `json:"CarCount"`
+	DisabledCount  int `json:"DisabledCount"`
+	AvailableCount int `json:"AvailableCount"`
+}
+
+type AccessoryStat struct {
+	ID          int    `json:"ID"`
+	Description string `json:"Description"`
+	Stock       int    `json:"Stock"`
+}
+
+type BookingStatusType struct {
+	ID            int    `json:"ID"`
+	Description   string `json:"Description"`
+	AdminRequired bool   `json:"AdminRequired"`
+	Order         int    `json:"Order"`
+	BookingPage   bool   `json:"BookingPage"`
+}
+
+type AdminBooking struct {
+	Booking *Booking    `json:"booking"`
+	User    *OutputUser `json:"user"`
+}
+
 type Booking struct {
-	ID            int          `json:ID`
-	CarID         int          `json:"carID"`
-	UserID        int          `json:"userID"`
-	Start         timestamp    `json:"start"`
-	End           timestamp    `json:"end"`
-	Finish        timestamp    `json:"finish"`
-	TotalCost     float64      `json:"totalCost"`
-	AmountPaid    float64      `json:"amountPaid"`
-	LateReturn    bool         `json:"lateReturn"`
-	Extension     bool         `json:"extension"`
-	Created       timestamp    `json:"created"`
-	BookingLength float64      `json:"bookingLength"`
-	ProcessID     int          `json:"processID"`
-	CarData       *Car         `json:"carData"`
-	Accessories   []*Accessory `json:"accessories"`
+	ID                   int          `json:ID`
+	CarID                int          `json:"carID"`
+	UserID               int          `json:"userID"`
+	Start                timestamp    `json:"start"`
+	End                  timestamp    `json:"end"`
+	Finish               timestamp    `json:"finish"`
+	TotalCost            float64      `json:"totalCost"`
+	AmountPaid           float64      `json:"amountPaid"`
+	LateReturn           bool         `json:"lateReturn"`
+	Extension            bool         `json:"extension"`
+	Created              timestamp    `json:"created"`
+	BookingLength        float64      `json:"bookingLength"`
+	ProcessID            int          `json:"processID"`
+	ProcessName          string       `json:"processName"`
+	AdminRequired        bool         `json:"adminRequired"`
+	CarData              *Car         `json:"carData"`
+	Accessories          []*Accessory `json:"accessories"`
+	AwaitingExtraPayment bool         `json:"awaitingExtraPayment"`
+	IsRefund             bool         `json:"isRefund"`
+}
+
+type BookingColumn struct {
+	ID             int       `json:ID`
+	CarID          int       `json:"carID"`
+	UserID         int       `json:"userID"`
+	Start          timestamp `json:"start"`
+	End            timestamp `json:"end"`
+	Finish         timestamp `json:"finish"`
+	TotalCost      float64   `json:"totalCost"`
+	AmountPaid     float64   `json:"amountPaid"`
+	LateReturn     bool      `json:"lateReturn"`
+	Extension      bool      `json:"extension"`
+	Created        timestamp `json:"created"`
+	BookingLength  float64   `json:"bookingLength"`
+	CarDescription string    `json:"CarDescription"`
+	UserFirstName  string    `json:"UserFirstName"`
+	UserOtherName  string    `json:"UserOtherName"`
+	Process        string    `json:"process"`
+	ProcessID      int       `json:"processID"`
 }
 
 type TimeRange struct {
@@ -68,6 +132,7 @@ type Car struct {
 	Description string     `json:"Description"`
 	Image       string     `json:"Image"`
 	Seats       int        `json:"Seats"`
+	Disabled    bool
 }
 
 func NewCar() *Car {
@@ -113,6 +178,7 @@ type User struct {
 	Verified     bool
 	Repeat       bool
 	SessionToken string
+	Admin        bool
 }
 
 type timestamp struct {
@@ -134,6 +200,7 @@ type OutputUser struct {
 	Verified     bool      `json:"Verified"`
 	Repeat       bool      `json:"Repeat"`
 	SessionToken string    `json:"SessionToken"`
+	Admin        bool
 }
 
 type BookingStatus struct {
@@ -173,5 +240,6 @@ func NewOutputUser(u *User) *OutputUser {
 		Verified:     u.Verified,
 		Repeat:       u.Repeat,
 		SessionToken: u.SessionToken,
+		Admin:        u.Admin,
 	}
 }
