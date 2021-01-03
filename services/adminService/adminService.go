@@ -271,3 +271,136 @@ func ProgressBooking(token, bookingID string) error {
 
 	return nil
 }
+
+func ProcessRefundHandler(token, bookingID, accept, reason string) error {
+
+	acceptBool, err := strconv.ParseBool(accept)
+	if err != nil {
+		return err
+	}
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	bookID, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookID)
+	if err != nil {
+		return err
+	}
+
+	if booking.ProcessID != bookingService.CanceledBooking || !booking.AwaitingExtraPayment {
+		return errors.New("booking not ready")
+	}
+
+	status, err := db.GetBookingProcessStatus(booking.ID, bookingService.QueryingRefund)
+	if err != nil {
+		return err
+	}
+	if status != nil && status.Active {
+		err := db.SetBookingStatus(status.ID, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	if acceptBool {
+		err = db.UpdateBookingPayment(booking.ID, booking.UserID, 0)
+		if err != nil {
+			return err
+		}
+		message := "Refund of £" + strconv.FormatFloat(booking.AmountPaid, 'f', 2, 64) + " Given"
+		if reason != "" {
+			message += " - " + reason
+		}
+
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundIssued, user.ID, 0, message)
+
+		if err != nil {
+			return err
+		}
+	} else {
+		message := "Refund Rejected"
+		if reason != "" {
+			message += " - " + reason
+		}
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundRejected, user.ID, 0, message)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ProcessExtraPayment(token, bookingID string) error {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	bookID, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookID)
+	if err != nil {
+		return err
+	}
+
+	if booking.ProcessID == bookingService.CanceledBooking || !booking.AwaitingExtraPayment || booking.ProcessID < bookingService.BookingConfirmed {
+		return errors.New("booking not ready")
+	}
+	amount := .0
+	message := "User "
+	if booking.IsRefund {
+		amount = booking.AmountPaid - booking.TotalCost
+		message += "Refunded £" + strconv.FormatFloat(amount, 'f', 2, 64)
+	} else {
+		amount = booking.TotalCost - booking.AmountPaid
+		message += "Payed £" + strconv.FormatFloat(amount, 'f', 2, 64)
+	}
+	if booking.ProcessID <= bookingService.BookingConfirmed {
+		message += " on Collection"
+	} else {
+		message += " on Return"
+	}
+
+	status, err := db.GetBookingProcessStatus(booking.ID, bookingService.EditAwaitingPayment)
+	if err != nil {
+		return err
+	}
+	if status != nil && status.Active {
+		err := db.SetBookingStatus(status.ID, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = db.UpdateBookingPayment(booking.ID, booking.UserID, booking.TotalCost)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.InsertBookingStatus(booking.ID, bookingService.EditPaymentAccepted, user.ID, 0, message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -297,6 +297,9 @@ func CancelBooking(token, bookingID string) error {
 	if booking.ProcessID == CanceledBooking {
 		return errors.New("booking already canceled")
 	}
+	if booking.ProcessID > BookingConfirmed && !user.Admin {
+		return errors.New("booking can only be canceled by an admin after collection")
+	}
 
 	err = db.DeactivateBookingStatuses(booking.ID)
 	if err != nil {

@@ -93,17 +93,85 @@ func readUserRow(row *sql.Row) (*data.User, error) {
 // Database User Logic
 //
 //
+//`SELECT b.*,cars.description, users.firstname, users.names, P.pid, P.description FROM bookings as b
+//INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FROM bookingstatus
+//								INNER JOIN bookings ON bookingstatus.bookingID = bookings.id
+//								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+//								WHERE bookingstatus.active = 1 AND
+//                                processtype.bookingPage = 1
+//								ORDER BY processtype.order DESC) P on p.id = b.id
+//INNER JOIN users on b.userID = users.id
+//INNER JOIN cars on cars.id = b.carID
+//WHERE (users.id like ?
+//OR users.firstname like ?
+//OR users.names like ?
+//OR users.email like ?
+//OR CONCAT(users.firstname, ' ', users.names) like ?) AND
+//b.id like ? AND
+//P.pid NOT in (?`+strings.Repeat(",?", len(filters)-1)+`)
+//ORDER BY b.created DESC LIMIT 10;`
 
-func GetAllCars() ([]*data.Car, error) {
-	rows, err := conn.Query(`SELECT cars.*, fuelType.description, gearType.description, carType.description, size.description, colour.description
-									FROM carrental.cars
-									INNER JOIN fueltype ON cars.fuelType = fuelType.id
-									INNER JOIN gearType ON cars.gearType = gearType.id
-									INNER JOIN carType ON cars.carType = carType.id
-									INNER JOIN size ON cars.size = size.id
-									INNER JOIN colour ON cars.colour = colour.id
-									WHERE cars.disabled = 0
-									LIMIT 48`)
+func GetAllCars(fuelTypes, gearTypes, carTypes, carSizes, colourTypes, search string) ([]*data.Car, error) {
+
+	search = space.ReplaceAllString(search, " ")
+	search = strings.TrimSpace(search)
+	search = fmt.Sprintf("%%%s%%", search)
+
+	args := []interface{}{search, search, search, search, search, search, search}
+
+	sql := `SELECT cars.*, fuelType.description, gearType.description, carType.description, size.description, colour.description
+	FROM carrental.cars
+	INNER JOIN fueltype ON cars.fuelType = fuelType.id
+	INNER JOIN gearType ON cars.gearType = gearType.id
+	INNER JOIN carType ON cars.carType = carType.id
+	INNER JOIN size ON cars.size = size.id
+	INNER JOIN colour ON cars.colour = colour.id
+	WHERE cars.disabled = 0 AND
+	(cars.Description like ? or cars.seats like ? or fuelType.description like ? or gearType.description like ? or
+		carType.description like ? or size.description like ? or colour.description like ?)`
+
+	fuels := strings.Split(fuelTypes, ",")
+	if len(fuels) > 0 && fuels[0] != "" {
+		for _, x := range fuels {
+			args = append(args, x)
+		}
+		sql += `AND cars.fuelType in (?` + strings.Repeat(",?", len(fuels)-1) + `)`
+	}
+
+	gears := strings.Split(gearTypes, ",")
+	if len(gears) > 0 && gears[0] != "" {
+		for _, x := range gears {
+			args = append(args, x)
+		}
+		sql += `AND cars.gearType in (?` + strings.Repeat(",?", len(gears)-1) + `)`
+	}
+
+	types := strings.Split(carTypes, ",")
+	if len(types) > 0 && types[0] != "" {
+		for _, x := range types {
+			args = append(args, x)
+		}
+		sql += `AND cars.carType in (?` + strings.Repeat(",?", len(types)-1) + `)`
+	}
+
+	sizes := strings.Split(carSizes, ",")
+	if len(sizes) > 0 && sizes[0] != "" {
+		for _, x := range sizes {
+			args = append(args, x)
+		}
+		sql += `AND cars.size in (?` + strings.Repeat(",?", len(sizes)-1) + `)`
+	}
+
+	colours := strings.Split(colourTypes, ",")
+	if len(colours) > 0 && colours[0] != "" {
+		for _, x := range colours {
+			args = append(args, x)
+		}
+		sql += `AND cars.colour in (?` + strings.Repeat(",?", len(colours)-1) + `)`
+	}
+	sql += ` LIMIT 48`
+
+	rows, err := conn.Query(sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -708,13 +776,66 @@ WHERE  equipmentbooking.bookingID = ? LIMIT 10`, bookingID)
 	return accessories, nil
 }
 
+func GetCarAttributes() (map[string][]*data.CarAttribute, error) {
+	rows, err := conn.Query(`SELECT '0' as typeIndex, cartype.description, cartype.id from cartype
+UNION
+SELECT '1' as typeIndex, colour.description, colour.id from colour
+UNION
+SELECT '2' as typeIndex, fueltype.description, fueltype.id from fueltype
+UNION
+SELECT '3' as typeIndex, geartype.description, geartype.id from geartype
+UNION
+SELECT '4' as typeIndex, size.description, size.id from size
+`)
+	if err != nil {
+		return nil, err
+	}
+	attributes := make(map[string][]*data.CarAttribute)
+
+	lastCount := 0
+	lastIndex := ""
+	typeIndex := ""
+	count := 0
+	for rows.Next() {
+		attr := &data.CarAttribute{}
+
+		err := rows.Scan(&typeIndex, &attr.Description, &attr.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, ok := attributes[typeIndex]; ok {
+			if count >= 5 {
+				attributes[typeIndex] = append(attributes[typeIndex], attr)
+			} else {
+				attributes[typeIndex][count] = attr
+			}
+			count++
+		} else {
+			lastCount = count
+			count = 0
+			attributes[typeIndex] = make([]*data.CarAttribute, 5)
+			attributes[typeIndex][count] = attr
+			count++
+		}
+
+		if count == 1 {
+			attributes[lastIndex] = attributes[lastIndex][:lastCount]
+		}
+
+		lastIndex = typeIndex
+	}
+	attributes[lastIndex] = attributes[lastIndex][:count]
+
+	return attributes, nil
+}
+
 func GetBookingStats() ([]*data.BookingStat, error) {
 
 	rows, err := conn.Query(`SELECT processID, processtype.description , count(*) as count, processtype.adminRequired  FROM bookings as b 
 								INNER JOIN bookingstatus ON bookingstatus.bookingID = b.id 
 								INNER JOIN processtype ON bookingstatus.processID = processtype.id
 								WHERE bookingstatus.active = 1
-								AND processtype.bookingPage = 1
                                 group by processID
 								ORDER BY processtype.order ASC LIMIT 15`)
 	if err != nil {

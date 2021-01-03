@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-func GetAllCars() ([]*data.Car, error) {
+func GetAllCars(fuelTypes, gearTypes, carTypes, carSizes, colours, search string) ([]*data.Car, error) {
 
-	cars, err := db.GetAllCars()
+	cars, err := db.GetAllCars(fuelTypes, gearTypes, carTypes, carSizes, colours, search)
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +29,15 @@ func GetCar(id string) (*data.Car, error) {
 	}
 
 	return car, nil
+}
+
+func GetCarAttributes() (map[string][]*data.CarAttribute, error) {
+
+	attributes, err := db.GetCarAttributes()
+	if err != nil {
+		return nil, err
+	}
+	return attributes, nil
 }
 
 func GetCarAccessories(start, end string) ([]*data.Accessory, error) {

@@ -87,6 +87,11 @@ type BookingColumn struct {
 	ProcessID      int       `json:"processID"`
 }
 
+type CarAttribute struct {
+	ID          int    `json:"ID"`
+	Description string `json:"Description"`
+}
+
 type TimeRange struct {
 	Start time.Time `json:"Start"`
 	End   time.Time `json:"End"`
