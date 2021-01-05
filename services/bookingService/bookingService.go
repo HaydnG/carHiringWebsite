@@ -41,6 +41,15 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 		return nil, err
 	}
 
+	dbUser, err := db.SelectUserByID(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if dbUser.Blacklisted {
+		return nil, errors.New("user is blackListed")
+	}
+
 	startNum, err := strconv.ParseInt(start, 10, 64)
 	if err != nil {
 		return nil, err
@@ -115,6 +124,11 @@ func Create(token, start, end, carID, late, extension, accessories, days string)
 	if car.Disabled {
 		return nil, errors.New("car disabled")
 	}
+
+	if car.Over25 && userService.CalculateAge(user.DOB.Unix()) < 25 {
+		return nil, errors.New("user does not meet age requirements")
+	}
+
 	price := car.Cost * daysValue
 
 	startString := startTime.Format("2006-01-02")

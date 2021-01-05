@@ -12,13 +12,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 )
 
 func main() {
@@ -72,6 +71,7 @@ func main() {
 
 	http.HandleFunc("/adminService/getBookingStats", getBookingStatsHandler)
 	http.HandleFunc("/adminService/getUserStats", getUserStatsHandler)
+	http.HandleFunc("/adminService/getUsers", getUsersHandler)
 	http.HandleFunc("/adminService/getCarStats", getCarStatsHandler)
 	http.HandleFunc("/adminService/getAccessoryStats", getAccessoryStatsHandler)
 	http.HandleFunc("/adminService/getSearchedBookings", getSearchedBookingsHandler)
@@ -79,9 +79,14 @@ func main() {
 	http.HandleFunc("/adminService/getQueryingRefundBookings", getQueryingRefundBookings)
 	http.HandleFunc("/adminService/getBookingStatuses", getBookingStatusesHandler)
 	http.HandleFunc("/adminService/getBooking", getAdminBookingHandler)
+	http.HandleFunc("/adminService/getUser", getAdminUserHandler)
 	http.HandleFunc("/adminService/progressBooking", progressBookingHandler)
 	http.HandleFunc("/adminService/processExtraPayment", processExtraPaymentHandler)
 	http.HandleFunc("/adminService/processRefund", processRefundHandler)
+	http.HandleFunc("/adminService/getCars", adminGetCarsHandler)
+	http.HandleFunc("/adminService/createCar", createCarHandler)
+	http.HandleFunc("/adminService/updateCar", updateCarHandler)
+
 	//Server operation
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -102,6 +107,7 @@ func SiteHandler(w http.ResponseWriter, r *http.Request) {
 		if strings.Compare(paths[1], "cars") == 0 {
 			r.RequestURI = paths[2]
 			r.URL.Path = paths[2]
+			enableCors(&w)
 			carFileServe := http.FileServer(http.Dir("./cars"))
 			carFileServe.ServeHTTP(w, r)
 			return
@@ -142,20 +148,7 @@ func registrationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dobUnix, err := strconv.ParseInt(dobString, 10, 64)
-	if err != nil {
-		err = errors.New("error reading DOB")
-		return
-	}
-
-	dob := time.Unix(dobUnix, 0)
-
-	if !userService.ValidateCredentials(email, password) {
-		err = errors.New("userService failed validation")
-		return
-	}
-
-	created, newUser, err := userService.CreateUser(email, password, firstname, names, dob)
+	created, newUser, err := userService.CreateUser(email, password, firstname, names, dobString)
 	if err != nil {
 		return
 	}
@@ -719,6 +712,40 @@ func getBookingStatsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
+func getUsersHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getUsersHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	search := r.FormValue("search")
+
+	users, err := adminService.GetUsers(token.Value, search)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&users)
+	w.Write(buffer.Bytes())
+}
+
 func getUserStatsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
@@ -948,17 +975,55 @@ func progressBookingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bookingID := r.FormValue("bookingID")
-	if bookingID == "" {
+	failed := r.FormValue("failed")
+	if bookingID == "" || failed == "" {
 		err = errors.New("incorrect parameters")
 		return
 	}
 
-	err = adminService.ProgressBooking(token.Value, bookingID)
+	err = adminService.ProgressBooking(token.Value, bookingID, failed)
 	if err != nil {
 		return
 	}
 
 	w.WriteHeader(200)
+}
+func getAdminUserHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getAdminUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	userID := r.FormValue("userID")
+	if userID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	userBundle, err := adminService.GetUser(token.Value, userID)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&userBundle)
+	w.Write(buffer.Bytes())
 }
 
 func getAdminBookingHandler(w http.ResponseWriter, r *http.Request) {
@@ -1057,6 +1122,144 @@ func getAccessoryStatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stats, err := adminService.GetAccessoryStats(token.Value)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&stats)
+	w.Write(buffer.Bytes())
+}
+
+func createCarHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("createCarHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	//token, err := r.Cookie("session-token")
+	//if err != nil {
+	//	return
+	//}
+
+	fuelType := r.FormValue("fuelType")
+	gearType := r.FormValue("gearType")
+	carType := r.FormValue("carType")
+	size := r.FormValue("size")
+	colour := r.FormValue("colour")
+	seats := r.FormValue("seats")
+	price := r.FormValue("price")
+	description := r.FormValue("description")
+	disabled := r.FormValue("disabled")
+	over25 := r.FormValue("over25")
+
+	if over25 == "" || fuelType == "" || gearType == "" || carType == "" || size == "" || colour == "" || seats == "" || price == "" || description == "" || disabled == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	err = adminService.CreateCar("token.Value", fuelType, gearType, carType, size, colour, seats, price, disabled, over25, description, r.Body)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func updateCarHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("createCarHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	//token, err := r.Cookie("session-token")
+	//if err != nil {
+	//	return
+	//}
+
+	fuelType := r.FormValue("fuelType")
+	gearType := r.FormValue("gearType")
+	carType := r.FormValue("carType")
+	size := r.FormValue("size")
+	colour := r.FormValue("colour")
+	seats := r.FormValue("seats")
+	price := r.FormValue("price")
+	description := r.FormValue("description")
+	disabled := r.FormValue("disabled")
+	carID := r.FormValue("carID")
+	over25 := r.FormValue("over25")
+
+	if over25 == "" || carID == "" || fuelType == "" || gearType == "" || carType == "" || size == "" || colour == "" || seats == "" || price == "" || description == "" || disabled == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	var body io.ReadCloser
+
+	if r.ContentLength <= 0 {
+		body = nil
+	} else {
+		body = r.Body
+	}
+
+	err = adminService.UpdateCar("token.Value", carID, fuelType, gearType, carType, size, colour, seats, price, disabled, description, over25, body)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(200)
+}
+
+func adminGetCarsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("adminGetCarsHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	fuelTypes := r.FormValue("fuelTypes")
+	gearTypes := r.FormValue("gearTypes")
+	carTypes := r.FormValue("carTypes")
+	carSizes := r.FormValue("carSizes")
+	colours := r.FormValue("colours")
+	search := r.FormValue("search")
+
+	stats, err := adminService.GetCars(token.Value, fuelTypes, gearTypes, carTypes, carSizes, colours, search)
 	if err != nil {
 		return
 	}

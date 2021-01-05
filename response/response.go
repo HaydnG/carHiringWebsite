@@ -7,7 +7,7 @@ type response struct {
 var (
 	DuplicateUser     = New("a user with this email already exists")
 	ValidationFailed  = New("validation failed")
-	IncorrectPassword = New("incorrect password")
+	IncorrectPassword = New("incorrect")
 )
 
 func New(m string) *response {

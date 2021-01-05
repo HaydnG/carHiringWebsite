@@ -2,6 +2,7 @@ package hash
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"math/rand"
 	"time"
 )
@@ -13,7 +14,7 @@ func init() {
 }
 
 // Get generates a hash with the salt and password
-func Get(salt []byte, password string) ([]byte, error) {
+func Get(salt string, password string) (string, error) {
 
 	hash := sha256.New()
 
@@ -21,34 +22,34 @@ func Get(salt []byte, password string) ([]byte, error) {
 
 	_, err := hash.Write(salted)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return hash.Sum(nil), nil
+	return base64.URLEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
 // New generates a hash and salt for the given password
-func New(password string) ([]byte, []byte, error) {
+func New(password string) (string, string, error) {
 
 	salt, err := generateSalt()
 	if err != nil {
-		return nil, nil, err
+		return "", "", err
 	}
 	authHash, err := Get(salt, password)
 
 	return salt, authHash, err
 }
 
-func generateSalt() ([]byte, error) {
+func generateSalt() (string, error) {
 	salt := make([]byte, saltSize)
 
 	_, err := rand.Read(salt[:])
 	if err != nil {
 		panic(err)
 	}
-	return salt, nil
+	return base64.URLEncoding.EncodeToString(salt), nil
 }
 
-func saltPassword(salt []byte, password string) []byte {
-	return append(salt, []byte(password)...)
+func saltPassword(salt string, password string) []byte {
+	return append([]byte(salt), []byte(password)...)
 }

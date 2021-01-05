@@ -1,14 +1,16 @@
 package userService
 
 import (
-	"bytes"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/hash"
 	"carHiringWebsite/session"
 	"database/sql"
 	"errors"
+	"math"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -61,6 +63,12 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 	var err error
 	newSession := false
 
+	email = strings.TrimSpace(email)
+
+	if !ValidateCredentials(email, password) {
+		return &data.OutputUser{}, false, nil
+	}
+
 	bag, err := session.GetByEmail(email)
 
 	if err == nil {
@@ -75,7 +83,7 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 
 	hash, err := hash.Get(authUser.AuthSalt, password)
 
-	if bytes.Compare(hash, authUser.AuthHash) != 0 {
+	if strings.Compare(hash, authUser.AuthHash) != 0 {
 		return &data.OutputUser{}, false, nil
 	}
 
@@ -90,9 +98,24 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 
 var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-func CreateUser(email, password, firstname, names string, dob time.Time) (bool, *data.OutputUser, error) {
+func CreateUser(email, password, firstname, names, dobString string) (bool, *data.OutputUser, error) {
 
-	_, err := db.SelectUserByEmail(email)
+	dobUnix, err := strconv.ParseInt(dobString, 10, 64)
+	if err != nil {
+		return false, nil, err
+	}
+
+	dob := time.Unix(dobUnix, 0)
+
+	if CalculateAge(dobUnix) < 18 {
+		return false, nil, errors.New("age validation error")
+	}
+
+	if !ValidateCredentials(email, password) {
+		return false, nil, errors.New("userService failed validation")
+	}
+
+	_, err = db.SelectUserByEmail(email)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, &data.OutputUser{}, err
@@ -106,6 +129,8 @@ func CreateUser(email, password, firstname, names string, dob time.Time) (bool, 
 		return false, &data.OutputUser{}, err
 	}
 
+	email = strings.TrimSpace(email)
+
 	userID, err := db.CreateUser(email, firstname, names, dob, salt, hash)
 	if err != nil {
 		return false, &data.OutputUser{}, err
@@ -117,6 +142,14 @@ func CreateUser(email, password, firstname, names string, dob time.Time) (bool, 
 	}
 
 	return true, data.NewOutputUser(newUser), nil
+}
+
+func CalculateAge(dobUnix int64) int {
+	ageDifMs := time.Now().Unix() - dobUnix
+	ageDate := time.Unix(ageDifMs, 0)
+	age := math.Abs(float64(ageDate.Year() - 1970))
+
+	return int(age)
 }
 
 func ValidateCredentials(email, password string) bool {
@@ -139,9 +172,22 @@ func isEmailValid(e string) bool {
 	return emailRegex.MatchString(e)
 }
 
+var lowerCaseLetters = regexp.MustCompile("[a-z]")
+var upperCaseLetters = regexp.MustCompile("[A-Z]")
+var numbers = regexp.MustCompile("[0-9]")
+
 // password validation rules
 func isPasswordValid(password string) bool {
 	if len(password) < 8 {
+		return false
+	}
+	if !lowerCaseLetters.MatchString(password) {
+		return false
+	}
+	if !upperCaseLetters.MatchString(password) {
+		return false
+	}
+	if !numbers.MatchString(password) {
 		return false
 	}
 	return true

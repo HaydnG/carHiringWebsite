@@ -6,8 +6,13 @@ import (
 	"carHiringWebsite/services/bookingService"
 	"carHiringWebsite/services/userService"
 	"carHiringWebsite/session"
+	"encoding/base64"
 	"errors"
+	"image/jpeg"
+	"io"
+	"os"
 	"strconv"
+	"strings"
 )
 
 func GetBookingStatuses(token string) ([]*data.BookingStatusType, error) {
@@ -67,6 +72,25 @@ func GetUserStats(token string) (*data.UserStat, error) {
 	stats.ActiveUsers = session.CountSesssions()
 
 	return stats, nil
+}
+
+func GetUsers(token string, userSearch string) ([]*data.OutputUser, error) {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.Admin {
+		return nil, errors.New("user is not admin")
+	}
+
+	users, err := db.GetUsers(userSearch)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 func GetCarStats(token string) (*data.CarStat, error) {
@@ -130,6 +154,39 @@ func GetBooking(token, bookingID string) (*data.AdminBooking, error) {
 	return adminBooking, nil
 }
 
+func GetUser(token, userID string) (*data.UserBundle, error) {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.Admin {
+		return nil, errors.New("user is not admin")
+	}
+
+	userIDValid, err := strconv.Atoi(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	userBundle := &data.UserBundle{}
+
+	user, err = db.SelectUserByID(userIDValid)
+	if err != nil {
+		return nil, err
+	}
+
+	userBundle.User = data.NewOutputUser(user)
+
+	userBundle.Bookings, err = db.GetAdminUsersBookings(userIDValid)
+	if err != nil {
+		return nil, err
+	}
+
+	return userBundle, nil
+}
+
 func GetAccessoryStats(token string) ([]*data.AccessoryStat, error) {
 
 	user, err := userService.GetUserFromSession(token)
@@ -147,6 +204,181 @@ func GetAccessoryStats(token string) ([]*data.AccessoryStat, error) {
 	}
 
 	return stats, nil
+}
+
+func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, disabled, over25, description string, body io.Reader) error {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	disabledBool, err := strconv.ParseBool(disabled)
+	if err != nil {
+		return err
+	}
+
+	over25Bool, err := strconv.ParseBool(over25)
+	if err != nil {
+		return err
+	}
+
+	fuelTypeID, err := strconv.Atoi(fuelType)
+	if err != nil {
+		return err
+	}
+	gearTypeID, err := strconv.Atoi(gearType)
+	if err != nil {
+		return err
+	}
+	carTypeID, err := strconv.Atoi(carType)
+	if err != nil {
+		return err
+	}
+	sizeID, err := strconv.Atoi(size)
+	if err != nil {
+		return err
+	}
+	colourID, err := strconv.Atoi(colour)
+	if err != nil {
+		return err
+	}
+	seatsNumber, err := strconv.Atoi(seats)
+	if err != nil {
+		return err
+	}
+	priceNumber, err := strconv.Atoi(price)
+	if err != nil {
+		return err
+	}
+
+	fileName := strings.ReplaceAll(description, " ", "_")
+	fileName += "_" + colour
+
+	file, err := os.Create("cars/" + fileName + ".jpg")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if file != nil {
+			file.Close()
+			if err != nil {
+				os.Remove("cars/" + fileName + ".jpg")
+			}
+		}
+	}()
+
+	decoder := base64.NewDecoder(base64.StdEncoding.WithPadding(base64.StdPadding), body)
+
+	image, err := jpeg.Decode(decoder)
+	if err != nil {
+		return err
+	}
+
+	err = jpeg.Encode(file, image, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.CreateCar(fuelTypeID, gearTypeID, carTypeID, sizeID, colourID, seatsNumber, priceNumber, disabledBool, over25Bool, fileName, description)
+
+	return nil
+}
+
+func UpdateCar(token, carID, fuelType, gearType, carType, size, colour, seats, price, disabled, description, over25 string, body io.Reader) error {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	disabledBool, err := strconv.ParseBool(disabled)
+	if err != nil {
+		return err
+	}
+	over25Bool, err := strconv.ParseBool(over25)
+	if err != nil {
+		return err
+	}
+
+	fuelTypeID, err := strconv.Atoi(fuelType)
+	if err != nil {
+		return err
+	}
+	gearTypeID, err := strconv.Atoi(gearType)
+	if err != nil {
+		return err
+	}
+	carTypeID, err := strconv.Atoi(carType)
+	if err != nil {
+		return err
+	}
+	sizeID, err := strconv.Atoi(size)
+	if err != nil {
+		return err
+	}
+	colourID, err := strconv.Atoi(colour)
+	if err != nil {
+		return err
+	}
+	seatsNumber, err := strconv.Atoi(seats)
+	if err != nil {
+		return err
+	}
+	priceNumber, err := strconv.Atoi(price)
+	if err != nil {
+		return err
+	}
+
+	car, err := db.GetCar(carID)
+	if err != nil {
+		return err
+	}
+
+	fileName := ""
+	if body != nil {
+		fileName = strings.ReplaceAll(description, " ", "_")
+		fileName += "_" + colour
+
+		file, err := os.Create("cars/" + fileName + ".jpg")
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if file != nil {
+				file.Close()
+				if err != nil {
+					os.Remove("cars/" + fileName + ".jpg")
+				}
+			}
+		}()
+
+		decoder := base64.NewDecoder(base64.StdEncoding.WithPadding(base64.StdPadding), body)
+
+		image, err := jpeg.Decode(decoder)
+		if err != nil {
+			return err
+		}
+
+		err = jpeg.Encode(file, image, nil)
+		if err != nil {
+			return err
+		}
+	} else {
+		fileName = car.Image
+	}
+
+	_, err = db.UpdateCar(fuelTypeID, gearTypeID, carTypeID, sizeID, colourID, seatsNumber, priceNumber, disabledBool, over25Bool, fileName, description, car.ID)
+
+	return nil
 }
 
 func GetQueryingRefundBookings(token string) ([]*data.BookingColumn, error) {
@@ -213,7 +445,26 @@ func GetSearchedBookings(token, userSearch, bookingSearch, statusFilter string) 
 	return bookings, nil
 }
 
-func ProgressBooking(token, bookingID string) error {
+func GetCars(token, fuelTypes, gearTypes, carTypes, carSizes, colours, search string) ([]*data.Car, error) {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return nil, err
+	}
+
+	if !user.Admin {
+		return nil, errors.New("user is not admin")
+	}
+
+	cars, err := db.AdminGetCars(fuelTypes, gearTypes, carTypes, carSizes, colours, search)
+	if err != nil {
+		return nil, err
+	}
+
+	return cars, nil
+}
+
+func ProgressBooking(token, bookingID, failed string) error {
 
 	user, err := userService.GetUserFromSession(token)
 	if err != nil {
@@ -222,6 +473,11 @@ func ProgressBooking(token, bookingID string) error {
 
 	if !user.Admin {
 		return errors.New("user is not admin")
+	}
+
+	failedValue, err := strconv.ParseBool(failed)
+	if err != nil {
+		return err
 	}
 
 	bookID, err := strconv.Atoi(bookingID)
@@ -249,24 +505,60 @@ func ProgressBooking(token, bookingID string) error {
 		}
 	}
 
+	failedMsg := ""
+	blackListUser := false
 	nextID := 0
 	if booking.ProcessID == bookingService.AwaitingConfirmation {
 		nextID = bookingService.BookingConfirmed
 	} else if booking.ProcessID == bookingService.BookingConfirmed {
 		nextID = bookingService.CollectedBooking
+		if failedValue {
+			blackListUser = true
+			failedMsg = "user failed to collect booking"
+		}
 	} else if booking.ProcessID == bookingService.CollectedBooking {
 		nextID = bookingService.ReturnedBooking
+		if failedValue {
+			blackListUser = true
+			failedMsg = "user failed to return booking"
+		}
 	} else if booking.ProcessID == bookingService.ReturnedBooking {
 		nextID = bookingService.CompletedBooking
+
+		err := db.SetRepeatUser(booking.UserID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if nextID == 0 {
 		return errors.New("booking not in correct state")
 	}
 
-	_, err = db.InsertBookingStatus(bookID, nextID, user.ID, 1, "admin progressed booking")
-	if err != nil {
-		return err
+	if !blackListUser && !failedValue {
+		_, err = db.InsertBookingStatus(bookID, nextID, user.ID, 1, "admin progressed booking")
+		if err != nil {
+			return err
+		}
+
+	} else {
+		failedMsg += " - User will be blackListed"
+
+		err = db.SetBlackListUser(booking.UserID)
+		if err != nil {
+			return err
+		}
+
+		err = db.DeactivateBookingStatuses(booking.ID)
+		if err != nil {
+			return err
+		}
+
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.CanceledBooking, user.ID, 1, failedMsg)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil

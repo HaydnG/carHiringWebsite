@@ -20,7 +20,7 @@ var (
 func InitDB() error {
 	var err error
 
-	conn, err = sql.Open("mysql", "interaction:pass@tcp(localhost:3306)/carrental?parseTime=true&timeout=3s")
+	conn, err = sql.Open("mysql", "root:pass@tcp(localhost:3306)/carrental?parseTime=true&timeout=3s")
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,54 @@ func CloseDB() error {
 //
 //
 
-func CreateUser(email, firstname, names string, dob time.Time, salt, hash []byte) (int, error) {
+func CreateCar(fuelType, gearType, carType, size, colour, seats, price int, disabled, over25 bool, fileName, description string) (int, error) {
+
+	//Prepared statements
+	createCar, err := conn.Prepare(`INSERT INTO cars
+							(fuelType, gearType, carType, size, colour, cost, description, image, seats, disabled, over25)
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`)
+	if err != nil {
+		return 0, err
+	}
+	defer createCar.Close()
+
+	res, err := createCar.Exec(fuelType, gearType, carType, size, colour, price, description, fileName, seats, disabled, over25)
+	if err != nil {
+		return 0, err
+	}
+
+	carID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	if carID == 0 {
+		return 0, errors.New("no car inserted")
+	}
+
+	return int(carID), nil
+}
+
+func UpdateCar(fuelType, gearType, carType, size, colour, seats, price int, disabled, over25 bool, fileName, description string, id int) (bool, error) {
+
+	//Prepared statements
+	result, err := conn.Exec(`UPDATE cars SET fuelType = ?, gearType = ?, carType = ?,
+ 									size = ?, colour = ?, cost = ?, description = ?,
+									image = ?, seats = ?, disabled = ?, over25 = ? WHERE (id = ?);`,
+		fuelType, gearType, carType, size, colour, price, description, fileName, seats, disabled, over25, id)
+	if err != nil {
+		return false, err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	return rows > 0, nil
+}
+
+func CreateUser(email, firstname, names string, dob time.Time, salt, hash string) (int, error) {
 
 	//Prepared statements
 	createUser, err := conn.Prepare(`INSERT INTO USERS
@@ -68,21 +115,99 @@ func CreateUser(email, firstname, names string, dob time.Time, salt, hash []byte
 }
 
 func SelectUserByEmail(email string) (*data.User, error) {
-	row := conn.QueryRow("SELECT * FROM USERS WHERE email = ?", email)
+	row := conn.QueryRow("SELECT u.*, (select count(*) from bookings as b where b.userID = u.id) as bookingCount FROM USERS as u WHERE u.email = ?", email)
 
 	return readUserRow(row)
 }
 
 func SelectUserByID(id int) (*data.User, error) {
-	row := conn.QueryRow("SELECT * FROM USERS WHERE id = ?", id)
+	row := conn.QueryRow("SELECT u.*, (select count(*) from bookings as b where b.userID = u.id) as bookingCount FROM USERS as u WHERE u.id = ?", id)
 
 	return readUserRow(row)
+}
+
+func GetUsers(userSearch string) ([]*data.OutputUser, error) {
+
+	userSearch = space.ReplaceAllString(userSearch, " ")
+	userSearch = strings.TrimSpace(userSearch)
+	userSearch = fmt.Sprintf("%%%s%%", userSearch)
+
+	var (
+		createdAt time.Time
+		dob       time.Time
+	)
+
+	rows, err := conn.Query(`SELECT u.id, u.firstname, u.names, u.email, u.createdAt, u.blackListed, u.DOB, u.repeat, u.admin,
+										(select count(*) from bookings as b where b.userID = u.id) as bookingCount
+										FROM USERS as u 
+										WHERE u.firstname like ? OR u.names like ? OR u.email like ? LIMIT 32`,
+		userSearch, userSearch, userSearch)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*data.OutputUser, 32)
+	count := 0
+	for rows.Next() {
+
+		newUser := &data.OutputUser{}
+		users[count] = newUser
+
+		err := rows.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &createdAt, &newUser.Blacklisted, &dob, &newUser.Repeat, &newUser.Admin, &newUser.BookingCount)
+		if err != nil {
+			return nil, err
+		}
+
+		newUser.CreatedAt = *data.ConvertDate(createdAt)
+		newUser.DOB = *data.ConvertDate(dob)
+
+		count++
+	}
+
+	users = users[:count]
+
+	return users, nil
+
+}
+
+func SetRepeatUser(userID int) error {
+	result, err := conn.Exec("UPDATE users SET `repeat` = 1 WHERE (id = ?);", userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
+func SetBlackListUser(userID int) error {
+	result, err := conn.Exec("UPDATE users SET `blackListed` = 1 WHERE (id = ?);", userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
 }
 
 func readUserRow(row *sql.Row) (*data.User, error) {
 	newUser := data.User{}
 
-	err := row.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat, &newUser.Admin)
+	err := row.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat, &newUser.Admin, &newUser.BookingCount)
 	if err != nil {
 		return &newUser, err
 	}
@@ -183,7 +308,7 @@ func GetAllCars(fuelTypes, gearTypes, carTypes, carSizes, colourTypes, search st
 		car := data.NewCar()
 		cars[count] = car
 
-		err := rows.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats, &car.Disabled,
+		err := rows.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats, &car.Disabled, &car.Over25,
 			&car.FuelType.Description, &car.GearType.Description, &car.CarType.Description, &car.Size.Description, &car.Colour.Description)
 		if err != nil {
 			return nil, err
@@ -209,12 +334,97 @@ func GetCar(id string) (*data.Car, error) {
 
 	car := data.NewCar()
 
-	err := row.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats, &car.Disabled,
+	err := row.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats, &car.Disabled, &car.Over25,
 		&car.FuelType.Description, &car.GearType.Description, &car.CarType.Description, &car.Size.Description, &car.Colour.Description)
 	if err != nil {
 		return car, err
 	}
 	return car, nil
+}
+
+func AdminGetCars(fuelTypes, gearTypes, carTypes, carSizes, colourTypes, search string) ([]*data.Car, error) {
+
+	search = space.ReplaceAllString(search, " ")
+	search = strings.TrimSpace(search)
+	search = fmt.Sprintf("%%%s%%", search)
+
+	args := []interface{}{search, search, search, search, search, search, search}
+
+	sql := `SELECT c.*, fuelType.description, gearType.description, carType.description, size.description, colour.description, COALESCE(b.bookingCount, 0) as bookingCount
+	FROM carrental.cars c
+	INNER JOIN fueltype ON c.fuelType = fuelType.id
+	INNER JOIN gearType ON c.gearType = gearType.id
+	INNER JOIN carType ON c.carType = carType.id
+	INNER JOIN size ON c.size = size.id
+	INNER JOIN colour ON c.colour = colour.id
+	LEFT JOIN (select carID,count(*) as bookingCount from bookings group by carID) as b on b.carID = c.id
+	WHERE (c.Description like ? or c.seats like ? or fuelType.description like ? or gearType.description like ? or
+		carType.description like ? or size.description like ? or colour.description like ?)`
+
+	fuels := strings.Split(fuelTypes, ",")
+	if len(fuels) > 0 && fuels[0] != "" {
+		for _, x := range fuels {
+			args = append(args, x)
+		}
+		sql += `AND c.fuelType in (?` + strings.Repeat(",?", len(fuels)-1) + `)`
+	}
+
+	gears := strings.Split(gearTypes, ",")
+	if len(gears) > 0 && gears[0] != "" {
+		for _, x := range gears {
+			args = append(args, x)
+		}
+		sql += `AND c.gearType in (?` + strings.Repeat(",?", len(gears)-1) + `)`
+	}
+
+	types := strings.Split(carTypes, ",")
+	if len(types) > 0 && types[0] != "" {
+		for _, x := range types {
+			args = append(args, x)
+		}
+		sql += `AND c.carType in (?` + strings.Repeat(",?", len(types)-1) + `)`
+	}
+
+	sizes := strings.Split(carSizes, ",")
+	if len(sizes) > 0 && sizes[0] != "" {
+		for _, x := range sizes {
+			args = append(args, x)
+		}
+		sql += `AND c.size in (?` + strings.Repeat(",?", len(sizes)-1) + `)`
+	}
+
+	colours := strings.Split(colourTypes, ",")
+	if len(colours) > 0 && colours[0] != "" {
+		for _, x := range colours {
+			args = append(args, x)
+		}
+		sql += `AND c.colour in (?` + strings.Repeat(",?", len(colours)-1) + `)`
+	}
+	sql += ` LIMIT 48`
+
+	rows, err := conn.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	cars := make([]*data.Car, 32)
+	count := 0
+	for rows.Next() {
+		car := data.NewCar()
+		cars[count] = car
+
+		err := rows.Scan(&car.ID, &car.FuelType.ID, &car.GearType.ID, &car.CarType.ID, &car.Size.ID, &car.Colour.ID, &car.Cost, &car.Description, &car.Image, &car.Seats, &car.Disabled, &car.Over25,
+			&car.FuelType.Description, &car.GearType.Description, &car.CarType.Description, &car.Size.Description, &car.Colour.Description, &car.BookingCount)
+		if err != nil {
+			return nil, err
+		}
+		count++
+	}
+
+	cars = cars[:count]
+
+	return cars, nil
+
 }
 
 //Car bookins count
@@ -452,6 +662,54 @@ ORDER BY b.start ASC LIMIT 10;`)
 	return columns, nil
 }
 
+func GetAdminUsersBookings(userID int) ([]*data.BookingColumn, error) {
+
+	var (
+		start   time.Time
+		end     time.Time
+		finish  time.Time
+		created time.Time
+	)
+
+	rows, err := conn.Query(`SELECT b.*,cars.description, users.firstname, users.names, RS.pid, RS.description FROM bookings as b
+INNER JOIN users on b.userID = users.id
+INNER JOIN cars on cars.id = b.carID
+INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = bookings.id 
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								ORDER BY processtype.order DESC) RS on RS.id = b.id
+WHERE users.id = ?
+ORDER BY b.created ASC LIMIT 20;`, userID)
+
+	if err != nil {
+		return nil, err
+	}
+	columns := make([]*data.BookingColumn, 20)
+
+	count := 0
+	for rows.Next() {
+
+		column := &data.BookingColumn{}
+		columns[count] = column
+
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		if err != nil {
+			return nil, err
+		}
+		column.Start = *data.ConvertDate(start)
+		column.End = *data.ConvertDate(end)
+		column.Finish = *data.ConvertDate(finish)
+		column.Created = *data.ConvertDate(created)
+
+		count++
+	}
+
+	columns = columns[:count]
+
+	return columns, nil
+}
+
 func GetAwaitingConfirmationBookings() ([]*data.BookingColumn, error) {
 
 	var (
@@ -574,12 +832,6 @@ func BookingHasOverlap(start, end, carID string) (bool, error) {
 
 	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings AS b
 								WHERE ((? <= b.end ) AND (? >= b.start))
-								AND (SELECT processID FROM bookingstatus 
-								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
-								INNER JOIN processtype ON bookingstatus.processID = processtype.id
-								WHERE bookingstatus.active = 1
-								ORDER BY processtype.order DESC
-								LIMIT 1) != 11
 								AND b.carID = ?`, start, end, carID)
 	overlaps := 0
 
@@ -647,12 +899,12 @@ func InsertBookingStatus(bookingID, processID, adminID, active int, description 
 
 func DeactivateBookingStatuses(bookingID int) error {
 
-	conn, err := conn.Exec(`UPDATE bookingstatus SET active = 0 WHERE (bookingID = ?)`, bookingID)
+	result, err := conn.Exec(`UPDATE bookingstatus SET active = 0 WHERE (bookingID = ?)`, bookingID)
 	if err != nil {
 		return err
 	}
 
-	count, err := conn.RowsAffected()
+	count, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
@@ -665,12 +917,12 @@ func DeactivateBookingStatuses(bookingID int) error {
 
 func SetBookingStatus(statusID int, active bool) error {
 
-	conn, err := conn.Exec(`UPDATE bookingstatus SET active = ? WHERE (id = ?)`, active, statusID)
+	result, err := conn.Exec(`UPDATE bookingstatus SET active = ? WHERE (id = ?)`, active, statusID)
 	if err != nil {
 		return err
 	}
 
-	count, err := conn.RowsAffected()
+	count, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
@@ -686,10 +938,10 @@ func GetBookingProcessStatus(bookingID, processID int) (*data.BookingStatus, err
 	bookingStatus := &data.BookingStatus{}
 	var completed time.Time
 
-	conn := conn.QueryRow(`SELECT * FROM carrental.bookingstatus
+	result := conn.QueryRow(`SELECT * FROM carrental.bookingstatus
 								WHERE bookingID = ? AND processID = ?
 								ORDER  BY completed DESC LIMIT 1`, bookingID, processID)
-	err := conn.Scan(&bookingStatus.ID, &bookingStatus.BookingID, &bookingStatus.ProcessID, &completed, &bookingStatus.Active, &bookingStatus.AdminID, &bookingStatus.Description)
+	err := result.Scan(&bookingStatus.ID, &bookingStatus.BookingID, &bookingStatus.ProcessID, &completed, &bookingStatus.Active, &bookingStatus.AdminID, &bookingStatus.Description)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -948,16 +1200,17 @@ func GetCarStats() (*data.CarStat, error) {
 
 	row := conn.QueryRow(`select
 count(*) as cars,
-sum(case disabled when 1 then 1 else 0 end) as disabled,
-sum(case (SELECT COUNT(*) FROM bookings AS b
-			WHERE ((now() <= b.end ) AND (now() >= b.start))
-			AND (SELECT processID FROM bookingstatus 
+coalesce(sum(case disabled when 1 then 1 else 0 end), 0) as disabled,
+coalesce((select COUNT(*) from cars) - (SELECT COUNT(*) FROM bookings AS b
+			INNER Join cars ca on ca.id = b.carID
+			WHERE (((now() <= b.end ) AND (now() >= b.start)) AND (SELECT processID FROM bookingstatus 
 			INNER JOIN bookings ON bookingstatus.bookingID = b.id 
 			INNER JOIN processtype ON bookingstatus.processID = processtype.id
 			WHERE bookingstatus.active = 1
+            AND bookings.carID = ca.id
 			ORDER BY processtype.order DESC
-			LIMIT 1) != 11
-			AND b.carID = c.id) when 0 then 1 else 0 end) as available
+			LIMIT 1) != 11)
+			or ca.disabled = 1), 0) as available
 from cars as c`)
 
 	stat := &data.CarStat{}

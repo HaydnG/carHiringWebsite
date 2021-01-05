@@ -126,18 +126,25 @@ type Attribute struct {
 	Description string `json:"Description"`
 }
 
+type UserBundle struct {
+	User     *OutputUser      `json:"user"`
+	Bookings []*BookingColumn `json:"bookings"`
+}
+
 type Car struct {
-	ID          int        `json:"ID"`
-	FuelType    *Attribute `json:"FuelType"`
-	GearType    *Attribute `json:"GearType"`
-	CarType     *Attribute `json:"CarType"`
-	Size        *Attribute `json:"Size"`
-	Colour      *Attribute `json:"Colour"`
-	Cost        float64    `json:"Cost"`
-	Description string     `json:"Description"`
-	Image       string     `json:"Image"`
-	Seats       int        `json:"Seats"`
-	Disabled    bool
+	ID           int        `json:"ID"`
+	FuelType     *Attribute `json:"FuelType"`
+	GearType     *Attribute `json:"GearType"`
+	CarType      *Attribute `json:"CarType"`
+	Size         *Attribute `json:"Size"`
+	Colour       *Attribute `json:"Colour"`
+	Cost         float64    `json:"Cost"`
+	Description  string     `json:"Description"`
+	Image        string     `json:"Image"`
+	Seats        int        `json:"Seats"`
+	Disabled     bool
+	BookingCount int  `json:"BookingCount"`
+	Over25       bool `json:"Over25"`
 }
 
 func NewCar() *Car {
@@ -176,14 +183,15 @@ type User struct {
 	Email        string
 	CreatedAt    time.Time
 	Password     string
-	AuthHash     []byte
-	AuthSalt     []byte
+	AuthHash     string
+	AuthSalt     string
 	Blacklisted  bool
 	DOB          time.Time
 	Verified     bool
 	Repeat       bool
 	SessionToken string
 	Admin        bool
+	BookingCount int
 }
 
 type timestamp struct {
@@ -196,6 +204,7 @@ func ConvertDate(d time.Time) *timestamp {
 
 //OutputUser used for serialisation
 type OutputUser struct {
+	ID           int       `json:"ID,omitempty"`
 	FirstName    string    `json:"FirstName"`
 	Names        string    `json:"Names"`
 	Email        string    `json:"Email"`
@@ -206,6 +215,7 @@ type OutputUser struct {
 	Repeat       bool      `json:"Repeat"`
 	SessionToken string    `json:"SessionToken"`
 	Admin        bool
+	BookingCount int `json:"BookingCount"`
 }
 
 type BookingStatus struct {
@@ -246,5 +256,6 @@ func NewOutputUser(u *User) *OutputUser {
 		Repeat:       u.Repeat,
 		SessionToken: u.SessionToken,
 		Admin:        u.Admin,
+		BookingCount: u.BookingCount,
 	}
 }
