@@ -18,6 +18,7 @@ type UserStat struct {
 	RepeatUsersCount int `json:"RepeatUsersCount"`
 	UserCount        int `json:"UserCount"`
 	ActiveUsers      int `json:"ActiveUsers"`
+	DisabledCount    int `json:"DisabledCount"`
 }
 
 type CarStat struct {
@@ -45,26 +46,31 @@ type AdminBooking struct {
 	User    *OutputUser `json:"user"`
 }
 
+type ExtensionResponse struct {
+	Days int `json:"days"`
+}
+
 type Booking struct {
-	ID                   int          `json:ID`
-	CarID                int          `json:"carID"`
-	UserID               int          `json:"userID"`
-	Start                timestamp    `json:"start"`
-	End                  timestamp    `json:"end"`
-	Finish               timestamp    `json:"finish"`
-	TotalCost            float64      `json:"totalCost"`
-	AmountPaid           float64      `json:"amountPaid"`
-	LateReturn           bool         `json:"lateReturn"`
-	Extension            bool         `json:"extension"`
-	Created              timestamp    `json:"created"`
-	BookingLength        float64      `json:"bookingLength"`
-	ProcessID            int          `json:"processID"`
-	ProcessName          string       `json:"processName"`
-	AdminRequired        bool         `json:"adminRequired"`
-	CarData              *Car         `json:"carData"`
-	Accessories          []*Accessory `json:"accessories"`
-	AwaitingExtraPayment bool         `json:"awaitingExtraPayment"`
-	IsRefund             bool         `json:"isRefund"`
+	ID                   int                  `json:ID`
+	CarID                int                  `json:"carID"`
+	UserID               int                  `json:"userID"`
+	Start                timestamp            `json:"start"`
+	End                  timestamp            `json:"end"`
+	Finish               timestamp            `json:"finish"`
+	TotalCost            float64              `json:"totalCost"`
+	AmountPaid           float64              `json:"amountPaid"`
+	LateReturn           bool                 `json:"lateReturn"`
+	FullDay              bool                 `json:"fullDay"`
+	Created              timestamp            `json:"created"`
+	BookingLength        float64              `json:"bookingLength"`
+	ProcessID            int                  `json:"processID"`
+	ProcessName          string               `json:"processName"`
+	AdminRequired        bool                 `json:"adminRequired"`
+	CarData              *Car                 `json:"carData"`
+	Accessories          []*Accessory         `json:"accessories"`
+	AwaitingExtraPayment bool                 `json:"awaitingExtraPayment"`
+	IsRefund             bool                 `json:"isRefund"`
+	ActiveStatuses       []*BookingStatusType `json:"activeStatuses"`
 }
 
 type BookingColumn struct {
@@ -77,7 +83,7 @@ type BookingColumn struct {
 	TotalCost      float64   `json:"totalCost"`
 	AmountPaid     float64   `json:"amountPaid"`
 	LateReturn     bool      `json:"lateReturn"`
-	Extension      bool      `json:"extension"`
+	FullDay        bool      `json:"fullDay"`
 	Created        timestamp `json:"created"`
 	BookingLength  float64   `json:"bookingLength"`
 	CarDescription string    `json:"CarDescription"`
@@ -192,6 +198,7 @@ type User struct {
 	SessionToken string
 	Admin        bool
 	BookingCount int
+	Disabled     bool
 }
 
 type timestamp struct {
@@ -214,8 +221,9 @@ type OutputUser struct {
 	Verified     bool      `json:"Verified"`
 	Repeat       bool      `json:"Repeat"`
 	SessionToken string    `json:"SessionToken"`
-	Admin        bool
-	BookingCount int `json:"BookingCount"`
+	Admin        bool      `json:"Admin"`
+	BookingCount int       `json:"BookingCount"`
+	Disabled     bool      `json:"Disabled"`
 }
 
 type BookingStatus struct {
@@ -230,6 +238,7 @@ type BookingStatus struct {
 	AdminRequired      bool      `json:"AdminRequired"`
 	Order              int       `json:"Order"`
 	BookingPage        bool      `json:"BookingPage"`
+	Extra              float64   `json:"Extra"`
 }
 
 type Response struct {
@@ -257,5 +266,7 @@ func NewOutputUser(u *User) *OutputUser {
 		SessionToken: u.SessionToken,
 		Admin:        u.Admin,
 		BookingCount: u.BookingCount,
+		Disabled:     u.Disabled,
+		ID:           u.ID,
 	}
 }

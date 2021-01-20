@@ -32,6 +32,32 @@ func Logout(token string) error {
 	return nil
 }
 
+func Get(token string) (*data.OutputUser, error) {
+	err := session.ValidateToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	bag, err := session.GetByToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	user := bag.GetUser()
+	newUser, err := db.SelectUserByID(user.ID)
+	if err != nil {
+		newUser = user
+	} else {
+		newUser.SessionToken = user.SessionToken
+	}
+
+	bag.UpdateUser(newUser)
+
+	outputUser := data.NewOutputUser(newUser)
+
+	return outputUser, nil
+}
+
 func ValidateSession(token string) (*data.OutputUser, error) {
 	err := session.ValidateToken(token)
 	if err != nil {
@@ -79,6 +105,10 @@ func Authenticate(email, password string) (*data.OutputUser, bool, error) {
 			return &data.OutputUser{}, false, err
 		}
 		newSession = true
+	}
+
+	if authUser.Disabled {
+		return &data.OutputUser{}, false, nil
 	}
 
 	hash, err := hash.Get(authUser.AuthSalt, password)

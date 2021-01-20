@@ -84,8 +84,13 @@ func GetCarBookings(start, end, carID string) ([]*data.OutputTimeRange, error) {
 	startTime := time.Unix(startNum, 0)
 	endTime := time.Unix(endNum, 0)
 
+	carIDValid, err := strconv.Atoi(carID)
+	if err != nil {
+		return nil, err
+	}
+
 	timeRanges, err := db.GetCarBookings(startTime.Format("2006-01-02"),
-		endTime.Format("2006-01-02"), carID)
+		endTime.Format("2006-01-02"), carIDValid)
 	if err != nil {
 		return nil, err
 	}

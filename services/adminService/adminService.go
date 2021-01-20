@@ -145,6 +145,11 @@ func GetBooking(token, bookingID string) (*data.AdminBooking, error) {
 		return nil, err
 	}
 
+	adminBooking.Booking.ActiveStatuses, err = db.GetActiveBookingStatuses(bookingIDValid)
+	if err != nil {
+		return nil, err
+	}
+
 	user, err = db.SelectUserByID(adminBooking.Booking.UserID)
 	if err != nil {
 		return nil, err
@@ -204,6 +209,58 @@ func GetAccessoryStats(token string) ([]*data.AccessoryStat, error) {
 	}
 
 	return stats, nil
+}
+
+func SetUser(token, userID, mode, value string) error {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	valueBool, err := strconv.ParseBool(value)
+	if err != nil {
+		return err
+	}
+	modeValue, err := strconv.Atoi(mode)
+	if err != nil {
+		return err
+	}
+	userIDValue, err := strconv.Atoi(userID)
+	if err != nil {
+		return err
+	}
+
+	if userIDValue == user.ID {
+		return errors.New("admin cannot demote themself")
+	}
+
+	switch modeValue {
+	case 0:
+		err = db.SetDisableUser(userIDValue, valueBool)
+		if err != nil {
+			return err
+		}
+		break
+	case 1:
+		err = db.SetBlackListUser(userIDValue, valueBool)
+		if err != nil {
+			return err
+		}
+		break
+	case 2:
+		err = db.SetAdminUser(userIDValue, valueBool)
+		if err != nil {
+			return err
+		}
+		break
+	}
+
+	return nil
 }
 
 func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, disabled, over25, description string, body io.Reader) error {
@@ -536,7 +593,7 @@ func ProgressBooking(token, bookingID, failed string) error {
 	}
 
 	if !blackListUser && !failedValue {
-		_, err = db.InsertBookingStatus(bookID, nextID, user.ID, 1, "admin progressed booking")
+		_, err = db.InsertBookingStatus(bookID, nextID, user.ID, 1, 0.0, "admin progressed booking")
 		if err != nil {
 			return err
 		}
@@ -544,7 +601,7 @@ func ProgressBooking(token, bookingID, failed string) error {
 	} else {
 		failedMsg += " - User will be blackListed"
 
-		err = db.SetBlackListUser(booking.UserID)
+		err = db.SetBlackListUser(booking.UserID, true)
 		if err != nil {
 			return err
 		}
@@ -554,7 +611,7 @@ func ProgressBooking(token, bookingID, failed string) error {
 			return err
 		}
 
-		_, err = db.InsertBookingStatus(booking.ID, bookingService.CanceledBooking, user.ID, 1, failedMsg)
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.CanceledBooking, user.ID, 1, 0.0, failedMsg)
 		if err != nil {
 			return err
 		}
@@ -615,7 +672,7 @@ func ProcessRefundHandler(token, bookingID, accept, reason string) error {
 			message += " - " + reason
 		}
 
-		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundIssued, user.ID, 0, message)
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundIssued, user.ID, 0, booking.AmountPaid, message)
 
 		if err != nil {
 			return err
@@ -625,7 +682,7 @@ func ProcessRefundHandler(token, bookingID, accept, reason string) error {
 		if reason != "" {
 			message += " - " + reason
 		}
-		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundRejected, user.ID, 0, message)
+		_, err = db.InsertBookingStatus(booking.ID, bookingService.RefundRejected, user.ID, 0, booking.AmountPaid, message)
 		if err != nil {
 			return err
 		}
@@ -689,7 +746,7 @@ func ProcessExtraPayment(token, bookingID string) error {
 		return err
 	}
 
-	_, err = db.InsertBookingStatus(booking.ID, bookingService.EditPaymentAccepted, user.ID, 0, message)
+	_, err = db.InsertBookingStatus(booking.ID, bookingService.EditPaymentAccepted, user.ID, 0, booking.TotalCost-booking.AmountPaid, message)
 	if err != nil {
 		return err
 	}

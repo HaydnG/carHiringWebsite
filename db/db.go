@@ -13,14 +13,18 @@ import (
 )
 
 var (
-	conn  *sql.DB
-	space = regexp.MustCompile(`\s+`)
+	conn    *sql.DB
+	space   = regexp.MustCompile(`\s+`)
+	User    string
+	Pass    string
+	Address string
+	Schema  string
 )
 
 func InitDB() error {
 	var err error
 
-	conn, err = sql.Open("mysql", "root:pass@tcp(localhost:3306)/carrental?parseTime=true&timeout=3s")
+	conn, err = sql.Open("mysql", User+":"+Pass+"@tcp("+Address+")/"+Schema+"?parseTime=true&timeout=3s")
 	if err != nil {
 		return err
 	}
@@ -137,7 +141,7 @@ func GetUsers(userSearch string) ([]*data.OutputUser, error) {
 		dob       time.Time
 	)
 
-	rows, err := conn.Query(`SELECT u.id, u.firstname, u.names, u.email, u.createdAt, u.blackListed, u.DOB, u.repeat, u.admin,
+	rows, err := conn.Query(`SELECT u.id, u.firstname, u.names, u.email, u.createdAt, u.blackListed, u.DOB, u.repeat, u.admin, u.disabled, 
 										(select count(*) from bookings as b where b.userID = u.id) as bookingCount
 										FROM USERS as u 
 										WHERE u.firstname like ? OR u.names like ? OR u.email like ? LIMIT 32`,
@@ -153,7 +157,7 @@ func GetUsers(userSearch string) ([]*data.OutputUser, error) {
 		newUser := &data.OutputUser{}
 		users[count] = newUser
 
-		err := rows.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &createdAt, &newUser.Blacklisted, &dob, &newUser.Repeat, &newUser.Admin, &newUser.BookingCount)
+		err := rows.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &createdAt, &newUser.Blacklisted, &dob, &newUser.Repeat, &newUser.Admin, &newUser.Disabled, &newUser.BookingCount)
 		if err != nil {
 			return nil, err
 		}
@@ -187,8 +191,40 @@ func SetRepeatUser(userID int) error {
 	return nil
 }
 
-func SetBlackListUser(userID int) error {
-	result, err := conn.Exec("UPDATE users SET `blackListed` = 1 WHERE (id = ?);", userID)
+func SetDisableUser(userID int, value bool) error {
+	result, err := conn.Exec("UPDATE users SET `disabled` = ? WHERE (id = ?);", value, userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+func SetAdminUser(userID int, value bool) error {
+	result, err := conn.Exec("UPDATE users SET `admin` = ? WHERE (id = ?);", value, userID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+func SetBlackListUser(userID int, value bool) error {
+	result, err := conn.Exec("UPDATE users SET `blackListed` = ? WHERE (id = ?);", value, userID)
 	if err != nil {
 		return err
 	}
@@ -207,7 +243,7 @@ func SetBlackListUser(userID int) error {
 func readUserRow(row *sql.Row) (*data.User, error) {
 	newUser := data.User{}
 
-	err := row.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat, &newUser.Admin, &newUser.BookingCount)
+	err := row.Scan(&newUser.ID, &newUser.FirstName, &newUser.Names, &newUser.Email, &newUser.CreatedAt, &newUser.AuthHash, &newUser.AuthSalt, &newUser.Blacklisted, &newUser.DOB, &newUser.Verified, &newUser.Repeat, &newUser.Admin, &newUser.Disabled, &newUser.BookingCount)
 	if err != nil {
 		return &newUser, err
 	}
@@ -494,7 +530,7 @@ func GetBookingHistory(bookingID int) ([]*data.BookingStatus, error) {
 	)
 
 	rows, err := conn.Query(`SELECT bookingstatus.id, bookingstatus.bookingID, bookingstatus.completed, bookingstatus.active, bookingstatus.adminID, bookingstatus.description,
-bookingstatus.processID, processtype.description, processtype.adminRequired, processtype.order, processtype.bookingPage
+bookingstatus.processID, bookingstatus.extra, processtype.description, processtype.adminRequired, processtype.order, processtype.bookingPage
 FROM bookingstatus
 inner join processtype on processtype.id = bookingstatus.processID
 where bookingstatus.bookingID = ?
@@ -515,7 +551,7 @@ order by bookingstatus.completed asc;`, bookingID)
 		}
 
 		err := rows.Scan(&status.ID, &status.BookingID, &completed, &status.Active, &status.AdminID, &status.Description,
-			&status.ProcessID, &status.ProcessDescription, &status.AdminRequired, &status.Order, &status.BookingPage)
+			&status.ProcessID, &status.Extra, &status.ProcessDescription, &status.AdminRequired, &status.Order, &status.BookingPage)
 		if err != nil {
 			return nil, err
 		}
@@ -529,7 +565,36 @@ order by bookingstatus.completed asc;`, bookingID)
 	return statuses, nil
 }
 
-func GetCarBookings(start, end, carID string) ([]*data.TimeRange, error) {
+func CountExtensionDays(start, end string, carID, bookingID int) (*data.ExtensionResponse, error) {
+
+	row := conn.QueryRow(`SELECT DATEDIFF(b.start, ?) as extensionDays FROM bookings as b
+						WHERE ((? <= b.finish ) and (? >= b.start))
+						AND b.carID = ? 
+						AND b.ID != ?
+						AND (SELECT processID FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = b.id 
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1
+								ORDER BY processtype.order DESC
+								LIMIT 1) != 11
+						ORDER BY b.start ASC
+						LIMIT 1 `, start, start, end, carID, bookingID)
+
+	response := &data.ExtensionResponse{Days: 0}
+
+	err := row.Scan(&response.Days)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			response.Days = 14
+		} else {
+			return nil, err
+		}
+	}
+
+	return response, nil
+}
+
+func GetCarBookings(start, end string, carID int) ([]*data.TimeRange, error) {
 	rows, err := conn.Query(`SELECT b.start, b.finish FROM bookings as b
 						WHERE ((? <= b.finish ) and (? >= b.start))
 						AND b.carID = ? 
@@ -596,7 +661,7 @@ ORDER BY b.start ASC LIMIT ?;`, processID, limit)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -645,7 +710,7 @@ ORDER BY b.start ASC LIMIT 10;`)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -693,7 +758,7 @@ ORDER BY b.created ASC LIMIT 20;`, userID)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -742,7 +807,7 @@ ORDER BY b.start ASC LIMIT 5;`)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName)
 		if err != nil {
 			return nil, err
 		}
@@ -811,7 +876,7 @@ ORDER BY b.created DESC LIMIT 10;`, args...)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.Extension, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -828,10 +893,17 @@ ORDER BY b.created DESC LIMIT 10;`, args...)
 	return columns, nil
 }
 
-func BookingHasOverlap(start, end, carID string) (bool, error) {
+func BookingHasOverlap(start, end string, carID int) (bool, error) {
 
 	row := conn.QueryRow(`SELECT COUNT(*) AS overlaps FROM bookings AS b
+INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FROM bookingstatus 
+								INNER JOIN bookings ON bookingstatus.bookingID = bookings.id 
+								INNER JOIN processtype ON bookingstatus.processID = processtype.id
+								WHERE bookingstatus.active = 1 AND
+                                processtype.bookingPage = 1
+								ORDER BY processtype.order DESC) P on p.id = b.id
 								WHERE ((? <= b.end ) AND (? >= b.start))
+								AND P.pid != 11
 								AND b.carID = ?`, start, end, carID)
 	overlaps := 0
 
@@ -843,17 +915,17 @@ func BookingHasOverlap(start, end, carID string) (bool, error) {
 	return overlaps > 0, nil
 }
 
-func CreateBooking(carID, userID int, start, end, finish string, cost float64, lateReturn, extension bool, bookingLength float64) (int, error) {
+func CreateBooking(carID, userID int, start, end, finish string, cost float64, lateReturn, fullDay bool, bookingLength float64) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, extension, created, bookingLength)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, fullDay, created, bookingLength)
 												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, finish, cost, lateReturn, extension, time.Now(), bookingLength)
+	res, err := createBooking.Exec(carID, userID, start, end, finish, cost, lateReturn, fullDay, time.Now(), bookingLength)
 	if err != nil {
 		return 0, err
 	}
@@ -870,17 +942,17 @@ func CreateBooking(carID, userID int, start, end, finish string, cost float64, l
 	return int(bookingID), nil
 }
 
-func InsertBookingStatus(bookingID, processID, adminID, active int, description string) (int, error) {
+func InsertBookingStatus(bookingID, processID, adminID, active int, extra float64, description string) (int, error) {
 
 	//Prepared statements
-	insertBookingStatus, err := conn.Prepare(`INSERT INTO bookingstatus(bookingID, processID, completed, active, adminID, description)
-												VALUES(?, ?, ?, ?, ?, ?)`)
+	insertBookingStatus, err := conn.Prepare(`INSERT INTO bookingstatus(bookingID, processID, completed, active, adminID, description, extra)
+												VALUES(?, ?, ?, ?, ?, ?,?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer insertBookingStatus.Close()
 
-	res, err := insertBookingStatus.Exec(bookingID, processID, time.Now(), active, adminID, description)
+	res, err := insertBookingStatus.Exec(bookingID, processID, time.Now(), active, adminID, description, extra)
 	if err != nil {
 		return 0, err
 	}
@@ -941,7 +1013,7 @@ func GetBookingProcessStatus(bookingID, processID int) (*data.BookingStatus, err
 	result := conn.QueryRow(`SELECT * FROM carrental.bookingstatus
 								WHERE bookingID = ? AND processID = ?
 								ORDER  BY completed DESC LIMIT 1`, bookingID, processID)
-	err := result.Scan(&bookingStatus.ID, &bookingStatus.BookingID, &bookingStatus.ProcessID, &completed, &bookingStatus.Active, &bookingStatus.AdminID, &bookingStatus.Description)
+	err := result.Scan(&bookingStatus.ID, &bookingStatus.BookingID, &bookingStatus.ProcessID, &completed, &bookingStatus.Active, &bookingStatus.AdminID, &bookingStatus.Description, &bookingStatus.Extra)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -1114,9 +1186,40 @@ func GetBookingStats() ([]*data.BookingStat, error) {
 	return stats, nil
 }
 
+func GetActiveBookingStatuses(bookingID int) ([]*data.BookingStatusType, error) {
+
+	rows, err := conn.Query(`SELECT pt.* FROM processtype pt
+								Inner join bookingstatus bs on bs.processID = pt.id
+								WHERE bs.bookingID = ?
+								AND bs.active = 1
+								LIMIT 17`, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	statuses := make([]*data.BookingStatusType, 17)
+
+	count := 0
+	for rows.Next() {
+
+		status := &data.BookingStatusType{}
+		statuses[count] = status
+
+		err := rows.Scan(&status.ID, &status.Description, &status.AdminRequired, &status.Order, &status.BookingPage)
+		if err != nil {
+			return nil, err
+		}
+
+		count++
+	}
+
+	statuses = statuses[:count]
+
+	return statuses, nil
+}
+
 func GetBookingStatuses() ([]*data.BookingStatusType, error) {
 
-	rows, err := conn.Query(`SELECT * FROM carrental.processtype WHERE processtype.bookingPage = 1 LIMIT 13`)
+	rows, err := conn.Query(`SELECT * FROM carrental.processtype WHERE processtype.bookingPage = 1 LIMIT 17`)
 	if err != nil {
 		return nil, err
 	}
@@ -1147,12 +1250,13 @@ func GetUserStats() (*data.UserStat, error) {
 sum(case users.admin when 1 then 1 else 0 end) as adminCount,
 sum(case users.blackListed when 1 then 1 else 0 end) as blackListedCount,
 sum(case users.repeat when 1 then 1 else 0 end) as repeatCount,
-count(*) as userCount
+count(*) as userCount,
+sum(case users.disabled when 1 then 1 else 0 end) as disabledCount
 FROM users;`)
 
 	stat := &data.UserStat{}
 
-	err := row.Scan(&stat.AdminCount, &stat.BlackListedCount, &stat.RepeatUsersCount, &stat.UserCount)
+	err := row.Scan(&stat.AdminCount, &stat.BlackListedCount, &stat.RepeatUsersCount, &stat.UserCount, &stat.DisabledCount)
 	if err != nil {
 		return nil, err
 	}
@@ -1257,7 +1361,7 @@ INNER JOIN
 	booking := &data.Booking{}
 
 	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &finish, &booking.TotalCost,
-		&booking.AmountPaid, &booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID, &booking.ProcessName, &booking.AdminRequired, &booking.AwaitingExtraPayment, &booking.IsRefund)
+		&booking.AmountPaid, &booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.ProcessID, &booking.ProcessName, &booking.AdminRequired, &booking.AwaitingExtraPayment, &booking.IsRefund)
 	if err != nil {
 		return nil, err
 	}
@@ -1277,7 +1381,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		created time.Time
 	)
 
-	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.extension, b.created, b.bookingLength,P.pid,
+	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.fullDay, b.created, b.bookingLength,P.pid,
 								cars.id as carID, cars.cost, cars.description, cars.image, cars.seats, fuelType.description, gearType.description, carType.description, size.description, colour.description
 								FROM bookings AS b
 								INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description, processtype.adminRequired, processtype.order  FROM bookingstatus 
@@ -1308,7 +1412,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		bookings[count] = booking
 
 		err := rows.Scan(&booking.ID, &start, &end, &finish, &booking.TotalCost, &booking.AmountPaid,
-			&booking.LateReturn, &booking.Extension, &created, &booking.BookingLength, &booking.ProcessID,
+			&booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.ProcessID,
 			&booking.CarData.ID, &booking.CarData.Cost, &booking.CarData.Description, &booking.CarData.Image, &booking.CarData.Seats,
 			&booking.CarData.FuelType.Description, &booking.CarData.GearType.Description, &booking.CarData.CarType.Description, &booking.CarData.Size.Description, &booking.CarData.Colour.Description)
 		if err != nil {
@@ -1348,9 +1452,9 @@ func UpdateBookingPayment(bookingID, userID int, amount float64) error {
 	return nil
 }
 
-func UpdateBooking(bookingID int, amount, bookingLength float64, lateReturn, extension bool) error {
-	result, err := conn.Exec(`UPDATE bookings SET totalCost = ?, lateReturn = ?, extension = ?, bookingLength = ?
-								WHERE (id = ?)`, amount, lateReturn, extension, bookingLength, bookingID)
+func UpdateBooking(bookingID int, amount, bookingLength float64, lateReturn, fullDay bool, end, finish string) error {
+	result, err := conn.Exec("UPDATE bookings SET totalCost = ?, lateReturn = ?, fullDay = ?, bookingLength = ?, `end` = ?, `finish` = ? WHERE (id = ?)",
+		amount, lateReturn, fullDay, bookingLength, end, finish, bookingID)
 	if err != nil {
 		return err
 	}
