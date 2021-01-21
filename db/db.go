@@ -118,6 +118,24 @@ func CreateUser(email, firstname, names string, dob time.Time, salt, hash string
 	return int(userID), nil
 }
 
+func UpdateUser(id int, email, firstname, names string, dob time.Time, salt, hash string) error {
+	result, err := conn.Exec("UPDATE users SET firstname = ?, names = ?, email = ?, authHash = ?, authSalt = ?, DOB = ? WHERE (id = ?)",
+		firstname, names, email, hash, salt, dob, id)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
 func SelectUserByEmail(email string) (*data.User, error) {
 	row := conn.QueryRow("SELECT u.*, (select count(*) from bookings as b where b.userID = u.id) as bookingCount FROM USERS as u WHERE u.email = ?", email)
 
@@ -743,6 +761,7 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 								INNER JOIN bookings ON bookingstatus.bookingID = bookings.id 
 								INNER JOIN processtype ON bookingstatus.processID = processtype.id
 								WHERE bookingstatus.active = 1
+								AND processtype.bookingPage = 1
 								ORDER BY processtype.order DESC) RS on RS.id = b.id
 WHERE users.id = ?
 ORDER BY b.created ASC LIMIT 20;`, userID)

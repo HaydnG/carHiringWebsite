@@ -691,6 +691,19 @@ func ProcessRefundHandler(token, bookingID, accept, reason string) error {
 	return nil
 }
 
+func CreateUser(token, email, password, firstname, names, dobString string) (bool, *data.OutputUser, error) {
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return false, nil, err
+	}
+
+	if !user.Admin {
+		return false, nil, errors.New("user is not admin")
+	}
+
+	return userService.CreateUser(email, password, firstname, names, dobString)
+}
+
 func ProcessExtraPayment(token, bookingID string) error {
 
 	user, err := userService.GetUserFromSession(token)

@@ -65,6 +65,7 @@ func main() {
 	http.HandleFunc("/userService/logout", logoutHandler)
 	http.HandleFunc("/userService/sessionCheck", sessionCheckHandler)
 	http.HandleFunc("/userService/get", getUserHandler)
+	http.HandleFunc("/userService/edit", editUserHandler)
 
 	http.HandleFunc("/carService/getAll", getAllCarsHandler)
 	http.HandleFunc("/carService/get", getCarHandler)
@@ -100,6 +101,7 @@ func main() {
 	http.HandleFunc("/adminService/createCar", createCarHandler)
 	http.HandleFunc("/adminService/updateCar", updateCarHandler)
 	http.HandleFunc("/adminService/setUser", setUserHandler)
+	http.HandleFunc("/adminService/createUser", adminCreateUserHandler)
 
 	fmt.Printf("\nDB settings - User: %s, Pass: %s, Address: %s, Schema: %s\n\n", db.User, db.Pass, db.Address, db.Schema)
 	fmt.Printf("Server Start Listening on port %s\n", port)
@@ -138,6 +140,118 @@ func SiteHandler(w http.ResponseWriter, r *http.Request) {
 	fileServe.ServeHTTP(w, r)
 }
 
+func adminCreateUserHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("adminCreateUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	firstname := r.FormValue("firstname")
+	names := r.FormValue("names")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	dobString := r.FormValue("dob")
+	if len(email) == 0 || len(password) == 0 || len(dobString) == 0 || len(firstname) == 0 || len(names) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect session")
+		return
+	}
+
+	created, newUser, err := adminService.CreateUser(token.Value, email, password, firstname, names, dobString)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+
+	if !created {
+		encoder.Encode(response.DuplicateUser)
+		w.Write(buffer.Bytes())
+		return
+	}
+
+	encoder.Encode(&newUser)
+	w.Write(buffer.Bytes())
+}
+
+func editUserHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("editUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	firstname := r.FormValue("firstname")
+	names := r.FormValue("names")
+	email := r.FormValue("email")
+	userID := r.FormValue("id")
+	password := r.FormValue("password")
+	oldPassword := r.FormValue("oldpassword")
+	dobString := r.FormValue("dob")
+	if len(userID) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect session")
+		return
+	}
+
+	newUser, err := userService.EditUser(token.Value, userID, email, oldPassword, password, firstname, names, dobString)
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	if err == userService.UsernameAlreadyExists {
+		encoder.Encode(response.DuplicateUser)
+		w.Write(buffer.Bytes())
+		return
+	}
+	if err == userService.InvalidPassword {
+		encoder.Encode(response.IncorrectPassword)
+		w.Write(buffer.Bytes())
+		return
+	}
+	if err != nil {
+		return
+	}
+
+	encoder.Encode(&newUser)
+	w.Write(buffer.Bytes())
+}
 func registrationHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
