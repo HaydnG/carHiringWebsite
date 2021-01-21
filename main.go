@@ -26,10 +26,10 @@ func main() {
 
 	buildAll := flag.Bool("buildall", false, "tells the webserver to rebuild the frontEnd")
 
-	db.User = *flag.String("user", "root", "the database user to use")
-	db.Pass = *flag.String("pass", "pass", "the database pass to use")
-	db.Address = *flag.String("address", "localhost:3306", "the database address to use")
-	db.Schema = *flag.String("schema", "carrental", "the schema user to use")
+	db.User = flag.String("user", "root", "the database user to use")
+	db.Pass = flag.String("pass", "pass", "the database pass to use")
+	db.Address = flag.String("address", "localhost:3306", "the database address to use")
+	db.Schema = flag.String("schema", "carrental", "the schema user to use")
 
 	port = *flag.String("port", "8080", "the port the server will run on")
 
@@ -103,7 +103,7 @@ func main() {
 	http.HandleFunc("/adminService/setUser", setUserHandler)
 	http.HandleFunc("/adminService/createUser", adminCreateUserHandler)
 
-	fmt.Printf("\nDB settings - User: %s, Pass: %s, Address: %s, Schema: %s\n\n", db.User, db.Pass, db.Address, db.Schema)
+	fmt.Printf("\nDB settings - User: %s, Pass: %s, Address: %s, Schema: %s\n\n", *db.User, *db.Pass, *db.Address, *db.Schema)
 	fmt.Printf("Server Start Listening on port %s\n", port)
 	//Server operation
 	err = http.ListenAndServe(":"+port, nil)

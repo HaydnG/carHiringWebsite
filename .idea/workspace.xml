@@ -86,7 +86,7 @@
       <recent name="C:\Users\Haydn\go\src\carHiringWebsite" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Build.Build Server">
+  <component name="RunManager" selected="Go Build.Build All">
     <configuration name="Build All" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="carHiringWebsite" />
       <working_directory value="$PROJECT_DIR$" />
@@ -197,45 +197,45 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="739" y="287" key="FileChooserDialogImpl/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1609728895684" />
-    <state width="1877" height="206" key="GridCell.Tab.0.bottom" timestamp="1611240692672">
+    <state width="1877" height="206" key="GridCell.Tab.0.bottom" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692672" />
+    <state width="1877" height="206" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644549" />
-    <state width="1877" height="206" key="GridCell.Tab.0.center" timestamp="1611240692672">
+    <state width="1877" height="206" key="GridCell.Tab.0.center" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692672" />
+    <state width="1877" height="206" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644548" />
-    <state width="1877" height="206" key="GridCell.Tab.0.left" timestamp="1611240692672">
+    <state width="1877" height="206" key="GridCell.Tab.0.left" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692672" />
+    <state width="1877" height="206" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644548" />
-    <state width="1877" height="206" key="GridCell.Tab.0.right" timestamp="1611240692672">
+    <state width="1877" height="206" key="GridCell.Tab.0.right" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692672" />
+    <state width="1877" height="206" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644549" />
-    <state width="1877" height="206" key="GridCell.Tab.1.bottom" timestamp="1611240692626">
+    <state width="1877" height="206" key="GridCell.Tab.1.bottom" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692626" />
+    <state width="1877" height="206" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644509" />
-    <state width="1877" height="206" key="GridCell.Tab.1.center" timestamp="1611240692626">
+    <state width="1877" height="206" key="GridCell.Tab.1.center" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692626" />
+    <state width="1877" height="206" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644509" />
-    <state width="1877" height="206" key="GridCell.Tab.1.left" timestamp="1611240692626">
+    <state width="1877" height="206" key="GridCell.Tab.1.left" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692626" />
+    <state width="1877" height="206" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644509" />
-    <state width="1877" height="206" key="GridCell.Tab.1.right" timestamp="1611240692626">
+    <state width="1877" height="206" key="GridCell.Tab.1.right" timestamp="1611245940462">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="206" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611240692626" />
+    <state width="1877" height="206" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1611245940462" />
     <state width="1877" height="206" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611173644509" />
     <state x="461" y="165" key="SettingsEditor" timestamp="1604178435097">
       <screen x="0" y="0" width="1920" height="1040" />

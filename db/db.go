@@ -15,16 +15,16 @@ import (
 var (
 	conn    *sql.DB
 	space   = regexp.MustCompile(`\s+`)
-	User    string
-	Pass    string
-	Address string
-	Schema  string
+	User    *string
+	Pass    *string
+	Address *string
+	Schema  *string
 )
 
 func InitDB() error {
 	var err error
 
-	conn, err = sql.Open("mysql", User+":"+Pass+"@tcp("+Address+")/"+Schema+"?parseTime=true&timeout=3s")
+	conn, err = sql.Open("mysql", *User+":"+*Pass+"@tcp("+*Address+")/"+*Schema+"?parseTime=true&timeout=3s")
 	if err != nil {
 		return err
 	}
