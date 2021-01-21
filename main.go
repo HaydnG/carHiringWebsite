@@ -22,7 +22,6 @@ import (
 
 func main() {
 	var err error
-	var port string
 
 	buildAll := flag.Bool("buildall", false, "tells the webserver to rebuild the frontEnd")
 
@@ -31,7 +30,7 @@ func main() {
 	db.Address = flag.String("address", "localhost:3306", "the database address to use")
 	db.Schema = flag.String("schema", "carrental", "the schema user to use")
 
-	port = *flag.String("port", "8080", "the port the server will run on")
+	port := flag.String("port", "8080", "the port the server will run on")
 
 	flag.Parse()
 
@@ -104,9 +103,9 @@ func main() {
 	http.HandleFunc("/adminService/createUser", adminCreateUserHandler)
 
 	fmt.Printf("\nDB settings - User: %s, Pass: %s, Address: %s, Schema: %s\n\n", *db.User, *db.Pass, *db.Address, *db.Schema)
-	fmt.Printf("Server Start Listening on port %s\n", port)
+	fmt.Printf("Server Start Listening on port %s\n\n", *port)
 	//Server operation
-	err = http.ListenAndServe(":"+port, nil)
+	err = http.ListenAndServe(":"+*port, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
