@@ -995,12 +995,9 @@ func DeactivateBookingStatuses(bookingID int) error {
 		return err
 	}
 
-	count, err := result.RowsAffected()
+	_, err = result.RowsAffected()
 	if err != nil {
 		return err
-	}
-	if count == 0 {
-		return errors.New("no rows affected")
 	}
 
 	return nil

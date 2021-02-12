@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"carHiringWebsite/VehicleScanner"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
 	"carHiringWebsite/services/adminService"
@@ -18,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -30,7 +32,7 @@ func main() {
 	db.Address = flag.String("address", "localhost:3306", "the database address to use")
 	db.Schema = flag.String("schema", "carrental", "the schema user to use")
 
-	port := flag.String("port", "8080", "the port the server will run on")
+	port := flag.String("port", "8090", "the port the server will run on")
 
 	flag.Parse()
 
@@ -71,6 +73,8 @@ func main() {
 	http.HandleFunc("/carService/getAccessories", getCarAccessoriesHandler)
 	http.HandleFunc("/carService/getBookings", getCarBookingsHandler)
 	http.HandleFunc("/carService/getCarAttributes", getCarAttributesHandler)
+
+	http.HandleFunc("/carService/testCarData", testCarData)
 
 	http.HandleFunc("/bookingService/create", createBookingHandler)
 	http.HandleFunc("/bookingService/makePayment", makePaymentHandler)
@@ -573,6 +577,35 @@ func getCarAttributesHandler(w http.ResponseWriter, r *http.Request) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	encoder.Encode(attributes)
+	w.Write(buffer.Bytes())
+}
+
+func testCarData(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("testCarData error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	details, err := VehicleScanner.GetVehiclePrice("1", time.Now().Add(time.Hour*24), time.Now().Add(time.Hour*24*10))
+	if err != nil {
+		return
+	}
+
+	fmt.Println(details)
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(details)
 	w.Write(buffer.Bytes())
 }
 
