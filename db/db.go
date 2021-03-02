@@ -679,7 +679,7 @@ ORDER BY b.start ASC LIMIT ?;`, processID, limit)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.PerDay, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -728,7 +728,7 @@ ORDER BY b.start ASC LIMIT 10;`)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.PerDay, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -777,7 +777,7 @@ ORDER BY b.created ASC LIMIT 20;`, userID)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.PerDay, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -826,7 +826,7 @@ ORDER BY b.start ASC LIMIT 5;`)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.PerDay, &column.CarDescription, &column.UserFirstName, &column.UserOtherName)
 		if err != nil {
 			return nil, err
 		}
@@ -895,7 +895,7 @@ ORDER BY b.created DESC LIMIT 10;`, args...)
 		column := &data.BookingColumn{}
 		columns[count] = column
 
-		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
+		err := rows.Scan(&column.ID, &column.CarID, &column.UserID, &start, &end, &finish, &column.TotalCost, &column.AmountPaid, &column.LateReturn, &column.FullDay, &created, &column.BookingLength, &column.PerDay, &column.CarDescription, &column.UserFirstName, &column.UserOtherName, &column.ProcessID, &column.Process)
 		if err != nil {
 			return nil, err
 		}
@@ -934,17 +934,17 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 	return overlaps > 0, nil
 }
 
-func CreateBooking(carID, userID int, start, end, finish string, cost float64, lateReturn, fullDay bool, bookingLength float64) (int, error) {
+func CreateBooking(carID, userID int, start, end, finish string, price float64, lateReturn, fullDay bool, bookingLength, cost float64) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, fullDay, created, bookingLength)
-												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, fullDay, created, bookingLength, perDay)
+												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createBooking.Close()
 
-	res, err := createBooking.Exec(carID, userID, start, end, finish, cost, lateReturn, fullDay, time.Now(), bookingLength)
+	res, err := createBooking.Exec(carID, userID, start, end, finish, price, lateReturn, fullDay, time.Now(), bookingLength, cost)
 	if err != nil {
 		return 0, err
 	}
@@ -1377,7 +1377,7 @@ INNER JOIN
 	booking := &data.Booking{}
 
 	err := row.Scan(&booking.ID, &booking.CarID, &booking.UserID, &start, &end, &finish, &booking.TotalCost,
-		&booking.AmountPaid, &booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.ProcessID, &booking.ProcessName, &booking.AdminRequired, &booking.AwaitingExtraPayment, &booking.IsRefund)
+		&booking.AmountPaid, &booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.PerDay, &booking.ProcessID, &booking.ProcessName, &booking.AdminRequired, &booking.AwaitingExtraPayment, &booking.IsRefund)
 	if err != nil {
 		return nil, err
 	}
@@ -1397,7 +1397,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		created time.Time
 	)
 
-	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.fullDay, b.created, b.bookingLength,P.pid,
+	rows, err := conn.Query(`SELECT b.id,b.start, b.end, b.finish, b.totalCost, b.amountPaid, b.lateReturn, b.fullDay, b.created, b.bookingLength, b.perDay,P.pid,
 								cars.id as carID, cars.cost, cars.description, cars.image, cars.seats, fuelType.description, gearType.description, carType.description, size.description, colour.description
 								FROM bookings AS b
 								INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description, processtype.adminRequired, processtype.order  FROM bookingstatus 
@@ -1428,7 +1428,7 @@ func GetUsersBookings(userID int) ([]*data.Booking, error) {
 		bookings[count] = booking
 
 		err := rows.Scan(&booking.ID, &start, &end, &finish, &booking.TotalCost, &booking.AmountPaid,
-			&booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.ProcessID,
+			&booking.LateReturn, &booking.FullDay, &created, &booking.BookingLength, &booking.PerDay, &booking.ProcessID,
 			&booking.CarData.ID, &booking.CarData.Cost, &booking.CarData.Description, &booking.CarData.Image, &booking.CarData.Seats,
 			&booking.CarData.FuelType.Description, &booking.CarData.GearType.Description, &booking.CarData.CarType.Description, &booking.CarData.Size.Description, &booking.CarData.Colour.Description)
 		if err != nil {

@@ -1,16 +1,23 @@
 package cacheStore
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
 
-func NewStore(name string, duration int) store {
-	return store{
-		name:     name,
-		data:     make(map[string]cacheItem),
-		duration: duration,
+func NewStore(name string, duration time.Duration) store {
+
+	s := store{
+		name:            name,
+		data:            make(map[string]cacheItem),
+		duration:        duration,
+		cleanUpInterval: 60,
+		cleanUpActive:   true,
 	}
+	s.cleanUpJob()
+
+	return s
 }
 
 type cacheItem struct {
@@ -20,10 +27,39 @@ type cacheItem struct {
 }
 
 type store struct {
-	lock     sync.RWMutex
-	name     string
-	data     map[string]cacheItem
-	duration int
+	lock            sync.RWMutex
+	name            string
+	data            map[string]cacheItem
+	duration        time.Duration
+	cleanUpInterval int
+	cleanUpActive   bool
+}
+
+func (s *store) cleanUpJob() {
+	duration := s.duration * time.Second
+	sleepInterval := time.Duration(s.cleanUpInterval) * time.Second
+
+	go func() {
+		for s.cleanUpActive {
+			time.Sleep(sleepInterval)
+			if !s.cleanUpActive {
+				return
+			}
+			if len(s.data) < 1 {
+				continue
+			}
+			fmt.Println("Cleaning cache.....")
+			s.lock.Lock()
+			now := time.Now()
+
+			for key, item := range s.data {
+				if now.Sub(item.created) >= duration {
+					delete(s.data, key)
+				}
+			}
+			s.lock.Unlock()
+		}
+	}()
 }
 
 func (s *store) GetData(key string, dataFunction func(key string) (interface{}, error)) (interface{}, error) {
@@ -46,7 +82,7 @@ func (s *store) GetData(key string, dataFunction func(key string) (interface{}, 
 
 	if ok {
 		s.lock.RUnlock()
-		if time.Now().Sub(item.created) >= (time.Second * time.Duration(s.duration)) {
+		if time.Now().Sub(item.created) >= (time.Second * s.duration) {
 			item, err = s.addData(key, dataFunction)
 			if err != nil {
 				return nil, err

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"carHiringWebsite/ABIDataProvider"
+	"carHiringWebsite/DVLADataProvider"
 	"carHiringWebsite/VehicleScanner"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
@@ -32,7 +34,7 @@ func main() {
 	db.Address = flag.String("address", "localhost:3306", "the database address to use")
 	db.Schema = flag.String("schema", "carrental", "the schema user to use")
 
-	port := flag.String("port", "8090", "the port the server will run on")
+	port := flag.String("port", "8080", "the port the server will run on")
 
 	flag.Parse()
 
@@ -56,6 +58,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = ABIDataProvider.InitProvider()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	DVLADataProvider.InitProvider()
+
 	//Serve the website files generated from the build-job in public
 
 	http.HandleFunc("/", SiteHandler)
@@ -75,6 +84,8 @@ func main() {
 	http.HandleFunc("/carService/getCarAttributes", getCarAttributesHandler)
 
 	http.HandleFunc("/carService/testCarData", testCarData)
+	http.HandleFunc("/carService/testInsure", testInsure)
+	http.HandleFunc("/carService/testDVLA", testDVLA)
 
 	http.HandleFunc("/bookingService/create", createBookingHandler)
 	http.HandleFunc("/bookingService/makePayment", makePaymentHandler)
@@ -580,6 +591,75 @@ func getCarAttributesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(buffer.Bytes())
 }
 
+func testDVLA(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("testDVLA error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	number := r.FormValue("number")
+	if number == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	data := DVLADataProvider.IsInvalidLicense(number)
+
+	fmt.Println(data)
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(data)
+	w.Write(buffer.Bytes())
+}
+
+func testInsure(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("testInsure error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	dob, err := time.Parse("02/01/2006", "04/06/1957")
+	if err != nil {
+		return
+	}
+
+	dataList, err := ABIDataProvider.HasFraudulentClaim("DUCK",
+		"DONALD",
+		"Duckulla Villa, Disneyland, Warmington0on-Sea, WM2 9DA",
+		dob)
+	if err != nil {
+		return
+	}
+
+	fmt.Println(dataList)
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(dataList)
+	w.Write(buffer.Bytes())
+}
+
 func testCarData(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	var err error
@@ -596,7 +676,7 @@ func testCarData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	details, err := VehicleScanner.GetVehiclePrice("1", time.Now().Add(time.Hour*24), time.Now().Add(time.Hour*24*10))
+	details, err := VehicleScanner.GetVehiclePrice(5, 1, time.Now().Add(time.Hour*24), time.Now().Add(time.Hour*24*10))
 	if err != nil {
 		return
 	}

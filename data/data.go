@@ -71,6 +71,17 @@ type Booking struct {
 	AwaitingExtraPayment bool                 `json:"awaitingExtraPayment"`
 	IsRefund             bool                 `json:"isRefund"`
 	ActiveStatuses       []*BookingStatusType `json:"activeStatuses"`
+	PerDay               float64              `json:"perDay"`
+}
+
+type InsurerColumn struct {
+	ID          int
+	LastName    string
+	FisrtName   string
+	DOB         timestamp
+	Address     string
+	DOC         timestamp
+	InsurerCode string
 }
 
 type BookingColumn struct {
@@ -91,6 +102,7 @@ type BookingColumn struct {
 	UserOtherName  string    `json:"UserOtherName"`
 	Process        string    `json:"process"`
 	ProcessID      int       `json:"processID"`
+	PerDay         int       `json:"perDay"`
 }
 
 type CarAttribute struct {

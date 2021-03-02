@@ -3,6 +3,7 @@ package VehicleScanner
 import (
 	"carHiringWebsite/cacheStore"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +16,7 @@ var (
 	request = http.Client{}
 
 	//carData = cacheStore.NewStore("CarData", 60)
-	priceCache = cacheStore.NewStore("priceCache", 10)
+	priceCache = cacheStore.NewStore("priceCache", 60*time.Second)
 )
 
 //type VehicleType struct {
@@ -128,14 +129,25 @@ var (
 //
 //}
 
-func GetVehiclePrice(vehicleType string, start time.Time, end time.Time) (float64, error) {
+func GetVehiclePrice(vehicleType, vehicleSize int, start time.Time, end time.Time) (float64, error) {
 
-	data, err := priceCache.GetData("https://www.affordrentacar.co.uk/booking/vehicle?SearchForm%5Bsub_category%5D="+vehicleType+
-		"&SearchForm%5Bdate_from%5D="+start.Format("01/02/06")+
-		"&SearchForm%5Bdate_from_time%5D=9%3A00+am&SearchForm%5Bdate_return%5D="+end.Format("01/02/06")+
-		"&SearchForm%5Bdate_return_time%5D=5%3A00+pm", func(key string) (interface{}, error) {
+	typeID := vehicleSize
 
-		price, err := requestPrice(key)
+	if vehicleType == 5 {
+		typeID += 3
+	}
+
+	carTypeID := strconv.Itoa(typeID)
+	days := strconv.Itoa(int(end.Sub(start).Hours() / 24))
+
+	url := "https://www.affordrentacar.co.uk/booking/vehicle?SearchForm%5Bsub_category%5D=" + carTypeID +
+		"&SearchForm%5Bdate_from%5D=" + start.Format("01/02/06") +
+		"&SearchForm%5Bdate_from_time%5D=9%3A00+am&SearchForm%5Bdate_return%5D=" + end.Format("01/02/06") +
+		"&SearchForm%5Bdate_return_time%5D=5%3A00+pm"
+
+	data, err := priceCache.GetData(carTypeID+"-"+days, func(key string) (interface{}, error) {
+
+		price, err := requestPrice(url)
 		if err != nil {
 			return nil, err
 		}
@@ -175,14 +187,17 @@ func requestPrice(url string) (float64, error) {
 	var price float64
 
 	priceSring := strings.TrimSpace(doc.Find(".recommend-price").Text())
-	priceStringClean := strings.Split(priceSring, ".")[0]
+	priceSplit := strings.Split(priceSring, ".")
+	priceStringClean := priceSplit[0] + "." + priceSplit[1][:2]
 
 	price, err = strconv.ParseFloat(priceStringClean, 64)
 	if err != nil {
 		return 0, err
 	}
 
-	return price, nil
+	discountedPrice := price * 0.95
+
+	return math.Ceil(discountedPrice*100) / 100, nil
 }
 
 //doc.Find("div#psearch-results").Each(func(i int, s *goquery.Selection) {

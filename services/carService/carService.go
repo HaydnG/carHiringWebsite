@@ -1,9 +1,11 @@
 package carService
 
 import (
+	"carHiringWebsite/VehicleScanner"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"errors"
+	"log"
 	"strconv"
 	"time"
 )
@@ -26,6 +28,15 @@ func GetCar(id string) (*data.Car, error) {
 	}
 	if car.Disabled {
 		return nil, errors.New("car disabled")
+	}
+
+	price, err := VehicleScanner.GetVehiclePrice(car.CarType.ID, car.Size.ID, time.Now().Add(time.Hour*24), time.Now().Add(time.Hour*24*2))
+	if err != nil {
+		log.Printf("failed to scan vehicle price for id: %d", id)
+	}
+
+	if price != 0 {
+		car.Cost = price
 	}
 
 	return car, nil

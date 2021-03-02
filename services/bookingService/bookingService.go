@@ -1,11 +1,13 @@
 package bookingService
 
 import (
+	"carHiringWebsite/VehicleScanner"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/services/userService"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -122,7 +124,16 @@ func Create(token, start, end, carID, late, fullDay, accessories, days string) (
 		return nil, errors.New("user does not meet age requirements")
 	}
 
-	price := car.Cost * daysValue
+	cost, err := VehicleScanner.GetVehiclePrice(car.CarType.ID, car.Size.ID, time.Now().Add(time.Hour*24), time.Now().Add(time.Hour*24*2))
+	if err != nil {
+		log.Printf("failed to scan vehicle price for id: %d", car.ID)
+	}
+
+	if cost == 0 {
+		cost = car.Cost
+	}
+
+	price := cost * daysValue
 
 	startString := startTime.Format("2006-01-02")
 	endString := endTime.Format("2006-01-02")
@@ -155,7 +166,7 @@ func Create(token, start, end, carID, late, fullDay, accessories, days string) (
 		endString,
 		finishString,
 		price,
-		lateValue, fullDayValue, calculatedDays)
+		lateValue, fullDayValue, calculatedDays, cost)
 	if err != nil {
 		return nil, err
 	}
