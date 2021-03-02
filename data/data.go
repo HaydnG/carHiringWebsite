@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"strconv"
 	"time"
 )
@@ -72,6 +73,7 @@ type Booking struct {
 	IsRefund             bool                 `json:"isRefund"`
 	ActiveStatuses       []*BookingStatusType `json:"activeStatuses"`
 	PerDay               float64              `json:"perDay"`
+	DriverID             sql.NullInt32
 }
 
 type InsurerColumn struct {
@@ -102,7 +104,8 @@ type BookingColumn struct {
 	UserOtherName  string    `json:"UserOtherName"`
 	Process        string    `json:"process"`
 	ProcessID      int       `json:"processID"`
-	PerDay         int       `json:"perDay"`
+	PerDay         float64   `json:"perDay"`
+	DriverID       sql.NullInt32
 }
 
 type CarAttribute struct {

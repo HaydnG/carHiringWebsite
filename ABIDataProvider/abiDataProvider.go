@@ -2,6 +2,7 @@ package ABIDataProvider
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-adodb"
@@ -25,13 +26,17 @@ func InitProvider() error {
 	return nil
 }
 
-func HasFraudulentClaim(lastName, firstNames, address string, DOB time.Time) (bool, error) {
+func HasFraudulentClaim(lastName, firstNames, address, postcode string, DOB time.Time) (bool, error) {
 
-	row := conn.QueryRow(`SELECT Count(*) FROM fraudulent_claim_data
-									Where FAMILY_NAME = ? AND 
-									FORENAMES = ? AND 
-									DATE_OF_BIRTH = ? AND 
-									ADDRESS_OF_CLAIM = ?`, lastName, firstNames, DOB.Format("02/01/2006"), address)
+	postcode = strings.ToLower(postcode)
+	address = strings.ToLower(address)
+
+	row := conn.QueryRow(`SELECT Count(*) FROM fraudulent_claim_data WHERE
+								LCASE(TRIM(LEFT(ADDRESS_OF_CLAIM,InStr(ADDRESS_OF_CLAIM, ",") - 1))) = ? AND
+								StrReverse(LCASE(TRIM(LEFT(StrReverse(ADDRESS_OF_CLAIM),InStr(StrReverse(ADDRESS_OF_CLAIM), ",") - 1)))) = ? AND
+								FAMILY_NAME = ? AND 
+								FORENAMES = ? AND 
+								DATE_OF_BIRTH = ?`, address, postcode, lastName, firstNames, DOB.Format("02/01/2006"))
 
 	rows := 0
 	err := row.Scan(&rows)

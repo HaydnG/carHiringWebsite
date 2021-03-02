@@ -36,6 +36,8 @@ const (
 	ExtendedBooking
 	ExtensionAwaitingPayment
 	ExtensionPaymentAccepted
+	DVLACheck
+	ABICheck
 )
 
 func Create(token, start, end, carID, late, fullDay, accessories, days string) (*data.Booking, error) {

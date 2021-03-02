@@ -646,7 +646,8 @@ func testInsure(w http.ResponseWriter, r *http.Request) {
 
 	dataList, err := ABIDataProvider.HasFraudulentClaim("DUCK",
 		"DONALD",
-		"Duckulla Villa, Disneyland, Warmington0on-Sea, WM2 9DA",
+		"Duckulla Villa",
+		"WM2 9DA",
 		dob)
 	if err != nil {
 		return

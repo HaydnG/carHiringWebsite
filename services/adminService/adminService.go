@@ -567,7 +567,33 @@ func ProgressBooking(token, bookingID, failed string) error {
 	nextID := 0
 	if booking.ProcessID == bookingService.AwaitingConfirmation {
 		nextID = bookingService.BookingConfirmed
+
+		_, err := db.InsertBookingStatus(bookID, bookingService.ABICheck, 1, 1, 0.0, "Awaiting ABI Check")
+		if err != nil {
+			return err
+		}
+		_, err = db.InsertBookingStatus(bookID, bookingService.DVLACheck, 1, 1, 0.0, "Awaiting DVLA Check")
+		if err != nil {
+			return err
+		}
+
 	} else if booking.ProcessID == bookingService.BookingConfirmed {
+		status, err := db.GetBookingProcessStatus(bookID, bookingService.DVLACheck)
+		if err != nil {
+			return err
+		}
+		if status != nil && status.Active {
+			return errors.New("booking not ready")
+		}
+
+		status, err = db.GetBookingProcessStatus(bookID, bookingService.ABICheck)
+		if err != nil {
+			return err
+		}
+		if status != nil && status.Active {
+			return errors.New("booking not ready")
+		}
+
 		nextID = bookingService.CollectedBooking
 		if failedValue {
 			blackListUser = true
