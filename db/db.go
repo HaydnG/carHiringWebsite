@@ -937,8 +937,8 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 func CreateBooking(carID, userID int, start, end, finish string, price float64, lateReturn, fullDay bool, bookingLength, cost float64) (int, error) {
 
 	//Prepared statements
-	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, fullDay, created, bookingLength, perDay)
-												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?, ?)`)
+	createBooking, err := conn.Prepare(`INSERT INTO bookings(carID, userID, start, end, finish,totalCost, amountPaid, lateReturn, fullDay, created, bookingLength, perDay, driverID)
+												VALUES(?, ?, ?, ?, ?, ?, '0', ?, ?, ?, ?, ?, NULL)`)
 	if err != nil {
 		return 0, err
 	}
