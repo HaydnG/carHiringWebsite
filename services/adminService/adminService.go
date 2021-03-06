@@ -298,6 +298,8 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 		return err
 	}
 
+	return nil
+
 }
 
 func verifyDriver(token, lastname, names, address, postcode, license, bookingID string, dob time.Time, images data.ImageBundle) (int, error) {
