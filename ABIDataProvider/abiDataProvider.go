@@ -2,6 +2,7 @@ package ABIDataProvider
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 	"time"
 
@@ -9,7 +10,8 @@ import (
 )
 
 var (
-	conn *sql.DB
+	conn            *sql.DB
+	FraudulentClaim = errors.New("fraudulent claim")
 )
 
 func InitProvider() error {

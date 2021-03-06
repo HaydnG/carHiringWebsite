@@ -75,6 +75,11 @@ type Booking struct {
 	PerDay               float64              `json:"perDay"`
 	DriverID             sql.NullInt32
 }
+type ImageBundle struct {
+	License   string `json:"license"`
+	Document1 string `json:"document1"`
+	Document2 string `json:"document2"`
+}
 
 type InsurerColumn struct {
 	ID          int

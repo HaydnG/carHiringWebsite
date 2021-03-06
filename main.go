@@ -5,6 +5,7 @@ import (
 	"carHiringWebsite/ABIDataProvider"
 	"carHiringWebsite/DVLADataProvider"
 	"carHiringWebsite/VehicleScanner"
+	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/response"
 	"carHiringWebsite/services/adminService"
@@ -116,6 +117,7 @@ func main() {
 	http.HandleFunc("/adminService/updateCar", updateCarHandler)
 	http.HandleFunc("/adminService/setUser", setUserHandler)
 	http.HandleFunc("/adminService/createUser", adminCreateUserHandler)
+	http.HandleFunc("/adminService/verifyDriver", verifyDriverUserHandler)
 
 	fmt.Printf("\nDB settings - User: %s, Pass: %s, Address: %s, Schema: %s\n\n", *db.User, *db.Pass, *db.Address, *db.Schema)
 	fmt.Printf("Server Start Listening on port %s\n\n", *port)
@@ -152,6 +154,67 @@ func SiteHandler(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = "/"
 	}
 	fileServe.ServeHTTP(w, r)
+}
+
+func verifyDriverUserHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("verifyDriverUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodPost {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	lastname := r.FormValue("lastname")
+	names := r.FormValue("names")
+	dob := r.FormValue("dob")
+	address := r.FormValue("address")
+	postcode := r.FormValue("postcode")
+	license := r.FormValue("license")
+	bookingID := r.FormValue("bookingID")
+
+	if len(dob) == 0 || len(address) == 0 || len(postcode) == 0 || len(lastname) == 0 || len(names) == 0 || len(license) == 0 || len(bookingID) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect session")
+		return
+	}
+
+	var images data.ImageBundle
+	err = json.NewDecoder(r.Body).Decode(&images)
+	if err != nil {
+		return
+	}
+
+	err = adminService.VerifyDriver(token.Value, dob, lastname, names, address, postcode, license, bookingID, images)
+	if err != nil {
+		return
+	}
+
+	data, err := adminService.GetBooking(token.Value, bookingID)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&data)
+	w.Write(buffer.Bytes())
 }
 
 func adminCreateUserHandler(w http.ResponseWriter, r *http.Request) {

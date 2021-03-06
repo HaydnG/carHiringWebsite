@@ -2,6 +2,7 @@ package DVLADataProvider
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,8 @@ var (
 	csvLock sync.RWMutex
 	csvData map[string]int
 	dir     = `./DVLAfiles/`
+
+	InvalidLicense = errors.New("invalid license")
 )
 
 func InitProvider() {

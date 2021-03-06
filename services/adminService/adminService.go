@@ -1,6 +1,8 @@
 package adminService
 
 import (
+	"carHiringWebsite/ABIDataProvider"
+	"carHiringWebsite/DVLADataProvider"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
 	"carHiringWebsite/services/bookingService"
@@ -13,6 +15,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func GetBookingStatuses(token string) ([]*data.BookingStatusType, error) {
@@ -263,6 +266,143 @@ func SetUser(token, userID, mode, value string) error {
 	return nil
 }
 
+func VerifyDriver(token, dob, lastname, names, address, postcode, license, bookingID string, images data.ImageBundle) error {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return err
+	}
+
+	if !user.Admin {
+		return errors.New("user is not admin")
+	}
+
+	bookID, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return err
+	}
+
+	booking, err := db.GetSingleBooking(bookID)
+	if err != nil {
+		return err
+	}
+
+	if booking.ProcessID != bookingService.BookingConfirmed {
+		return errors.New("booking has incorrect status")
+	}
+
+	if DVLADataProvider.IsInvalidLicense(license) {
+		return DVLADataProvider.InvalidLicense
+	}
+
+	dobUnix, err := strconv.ParseInt(dob, 10, 64)
+	if err != nil {
+		return err
+	}
+
+	dobTime := time.Unix(dobUnix, 0)
+
+	fraudulent, err := ABIDataProvider.HasFraudulentClaim(lastname, names, address, postcode, dobTime)
+	if err != nil {
+		return err
+	}
+	if fraudulent {
+		return ABIDataProvider.FraudulentClaim
+	}
+
+	noExtraDoc := false
+
+	licenseImageReader := strings.NewReader(images.License)
+	document1ImageReader := strings.NewReader(images.Document1)
+
+	var document2ImageReader io.Reader
+	if images.Document2 == "empty" {
+		noExtraDoc = true
+	} else {
+		document2ImageReader = strings.NewReader(images.Document2)
+	}
+
+	userID := strconv.Itoa(booking.UserID)
+	os.Mkdir("documents/"+userID+"/"+bookingID, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	licenseFile, err := os.Create("documents/" + userID + "/" + bookingID + "/license.jpg")
+	if err != nil {
+		return err
+	}
+	document1File, err := os.Create("documents/" + userID + "/" + bookingID + "/document1.jpg")
+	if err != nil {
+		return err
+	}
+	var document2File *os.File
+	if !noExtraDoc {
+		document2File, err = os.Create("documents/" + userID + "/" + bookingID + "/document2.jpg")
+		if err != nil {
+			return err
+		}
+	}
+
+	defer func() {
+		if licenseFile != nil {
+			licenseFile.Close()
+		}
+		if document1File != nil {
+			document1File.Close()
+		}
+		if !noExtraDoc && document2File != nil {
+			document2File.Close()
+		}
+		if err != nil {
+			os.Remove("documents/" + userID + "/" + bookingID + "/license.jpg")
+			os.Remove("documents/" + userID + "/" + bookingID + "/document1.jpg")
+			os.Remove("documents/" + userID + "/" + bookingID + "/document2.jpg")
+		}
+	}()
+
+	// If fraud or bad license add and black list driver
+	// if ok, insert driver
+	// User driverID as document storage location
+	// Check if driver already blacklisted, or exists
+	// if driver already exists and not black listed, check again
+	// overrite documents
+	// Add viewing driver details on booking
+
+	err = saveImage(licenseImageReader, licenseFile)
+	if err != nil {
+		return err
+	}
+	err = saveImage(document1ImageReader, document1File)
+	if err != nil {
+		return err
+	}
+	if !noExtraDoc {
+		err = saveImage(document2ImageReader, document2File)
+		if err != nil {
+			return err
+		}
+	}
+
+	status, err := db.GetBookingProcessStatus(bookID, booking.ProcessID)
+	if err != nil {
+		return err
+	}
+	if status != nil && status.Active {
+		err := db.SetBookingStatus(status.ID, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = db.InsertBookingStatus(bookID, bookingService.CollectedBooking, user.ID, 1, 0.0, "admin progressed booking")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, disabled, over25, description string, body io.Reader) error {
 
 	user, err := userService.GetUserFromSession(token)
@@ -329,9 +469,21 @@ func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, d
 		}
 	}()
 
-	decoder := base64.NewDecoder(base64.StdEncoding.WithPadding(base64.StdPadding), body)
+	err = saveImage(body, file)
+	if err != nil {
+		return err
+	}
 
-	image, err := jpeg.Decode(decoder)
+	_, err = db.CreateCar(fuelTypeID, gearTypeID, carTypeID, sizeID, colourID, seatsNumber, priceNumber, disabledBool, over25Bool, fileName, description)
+
+	return nil
+}
+
+func saveImage(reader io.Reader, file *os.File) error {
+
+	reader = base64.NewDecoder(base64.StdEncoding.WithPadding(base64.StdPadding), reader)
+
+	image, err := jpeg.Decode(reader)
 	if err != nil {
 		return err
 	}
@@ -340,8 +492,6 @@ func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, d
 	if err != nil {
 		return err
 	}
-
-	_, err = db.CreateCar(fuelTypeID, gearTypeID, carTypeID, sizeID, colourID, seatsNumber, priceNumber, disabledBool, over25Bool, fileName, description)
 
 	return nil
 }
