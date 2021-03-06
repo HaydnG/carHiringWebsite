@@ -25,7 +25,7 @@ var (
 	csvData map[string]int
 	dir     = `./DVLAfiles/`
 
-	InvalidLicense = errors.New("invalid license")
+	InvalidLicense = errors.New("invalidLicense")
 )
 
 func InitProvider() {

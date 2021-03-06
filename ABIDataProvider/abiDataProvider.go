@@ -11,7 +11,7 @@ import (
 
 var (
 	conn            *sql.DB
-	FraudulentClaim = errors.New("fraudulent claim")
+	FraudulentClaim = errors.New("fraudulentClaim")
 )
 
 func InitProvider() error {

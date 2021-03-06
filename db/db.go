@@ -973,17 +973,17 @@ func GetDriverByID(ID int) (*data.Driver, error) {
 	return driver, nil
 }
 
-func CreateDriver(lastName, names, license, address, postcode string, dob time.Time) (int, error) {
+func CreateDriver(lastName, names, license, address, postcode string, blackListed bool, dob time.Time) (int, error) {
 
 	//Prepared statements
 	createDriver, err := conn.Prepare(`INSERT INTO drivers(lastName, names, licenseNumber, address, postcode, blackListed, dob)
-												VALUES(?, ?, ?, ?, ?, 0, ?)`)
+												VALUES(?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createDriver.Close()
 
-	res, err := createDriver.Exec(lastName, names, license, address, postcode, dob)
+	res, err := createDriver.Exec(lastName, names, license, address, postcode, blackListed, dob)
 	if err != nil {
 		return 0, err
 	}
@@ -998,6 +998,24 @@ func CreateDriver(lastName, names, license, address, postcode string, dob time.T
 	}
 
 	return int(driverID), nil
+}
+
+func AddBookingDriver(bookingID, driverID int) error {
+	result, err := conn.Exec("update bookings set driverID = ? where id = ?",
+		driverID, bookingID)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
 }
 
 func BlackListedDriver(id int) error {
@@ -1018,30 +1036,23 @@ func BlackListedDriver(id int) error {
 	return nil
 }
 
-func UpdateDriver(id int, licenseNumber, address, postcode string, blackListed bool, dob time.Time) (int, error) {
+func UpdateDriver(id int, licenseNumber, address, postcode string, blackListed bool, dob time.Time) error {
 
-	//Prepared statements
-	updateDriver, err := conn.Prepare(`update drivers set licenseNumber = ?, address = ?, postcode = ?, blackListed = ?, dob = ? WHERE id  = ?`)
+	result, err := conn.Exec(`update drivers set licenseNumber = ?, address = ?, postcode = ?, blackListed = ?, dob = ? WHERE id  = ?`,
+		licenseNumber, address, postcode, blackListed, dob, id)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	defer updateDriver.Close()
 
-	res, err := updateDriver.Exec(licenseNumber, address, postcode, blackListed, dob, id)
+	count, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
 	}
 
-	driverID, err := res.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	if driverID == 0 {
-		return 0, errors.New("no driver updated")
-	}
-
-	return int(driverID), nil
+	return nil
 }
 
 func CreateBooking(carID, userID int, start, end, finish string, price float64, lateReturn, fullDay bool, bookingLength, cost float64) (int, error) {

@@ -161,7 +161,9 @@ func verifyDriverUserHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	defer func() {
-		if err != nil {
+		if err == adminService.BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
+			w.Write([]byte(err.Error()))
+		} else if err != nil {
 			log.Printf("verifyDriverUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
 		}

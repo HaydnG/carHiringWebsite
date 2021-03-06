@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	BlackListedDriver = errors.New("driver is blackListed")
+	BlackListedDriver = errors.New("blacklisted")
 )
 
 func GetBookingStatuses(token string) ([]*data.BookingStatusType, error) {
@@ -282,16 +282,17 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 	driverID, err := verifyDriver(token, lastname, names, address, postcode, license, bookingID, dobTime, images)
 	if err == BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
 		if driverID != 0 {
-			_, err = db.UpdateDriver(driverID, license, address, postcode, false, dobTime)
+			err = db.BlackListedDriver(driverID)
 			if err != nil {
 				return err
 			}
 		} else {
-			_, err = db.CreateDriver(lastname, names, license, address, postcode, dobTime)
+			_, err = db.CreateDriver(lastname, names, license, address, postcode, true, dobTime)
 			if err != nil {
 				return err
 			}
 		}
+		return err
 	}
 
 	if err != nil {
@@ -327,6 +328,22 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 		return 0, errors.New("booking has incorrect status")
 	}
 
+	DVLAStatus, err := db.GetBookingProcessStatus(bookID, bookingService.DVLACheck)
+	if err != nil {
+		return 0, err
+	}
+	if DVLAStatus != nil && !DVLAStatus.Active {
+		return 0, errors.New("booking not ready")
+	}
+
+	ABIStatus, err := db.GetBookingProcessStatus(bookID, bookingService.ABICheck)
+	if err != nil {
+		return 0, err
+	}
+	if ABIStatus != nil && !ABIStatus.Active {
+		return 0, errors.New("booking not ready")
+	}
+
 	driver, err := db.GetDriverByName(lastname, names)
 	if err != nil {
 		return 0, err
@@ -353,13 +370,8 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 		return driverID, ABIDataProvider.FraudulentClaim
 	}
 
-	if driver != nil {
-		driverID, err = db.UpdateDriver(driver.ID, license, address, postcode, false, dob)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		driverID, err = db.CreateDriver(lastname, names, license, address, postcode, dob)
+	if driver == nil {
+		driverID, err = db.CreateDriver(lastname, names, license, address, postcode, false, dob)
 		if err != nil {
 			return 0, err
 		}
@@ -378,7 +390,7 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 	}
 
 	driverIDString := strconv.Itoa(driverID)
-	os.Mkdir("documents/"+driverIDString+"/"+bookingID, os.ModePerm)
+	err = os.MkdirAll("documents/"+driverIDString+"/"+bookingID, os.ModePerm)
 	if err != nil {
 		return 0, err
 	}
@@ -416,14 +428,6 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 		}
 	}()
 
-	// If fraud or bad license add and black list driver
-	// if ok, insert driver
-	// User driverID as document storage location
-	// Check if driver already blacklisted, or exists
-	// if driver already exists and not black listed, check again
-	// overrite documents
-	// Add viewing driver details on booking
-
 	err = saveImage(licenseImageReader, licenseFile)
 	if err != nil {
 		return 0, err
@@ -451,6 +455,21 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 	}
 
 	_, err = db.InsertBookingStatus(bookID, bookingService.CollectedBooking, user.ID, 1, 0.0, "admin progressed booking")
+	if err != nil {
+		return 0, err
+	}
+
+	err = db.SetBookingStatus(DVLAStatus.ID, false)
+	if err != nil {
+		return 0, err
+	}
+
+	err = db.SetBookingStatus(ABIStatus.ID, false)
+	if err != nil {
+		return 0, err
+	}
+
+	err = db.AddBookingDriver(bookID, driverID)
 	if err != nil {
 		return 0, err
 	}
