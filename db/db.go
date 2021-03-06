@@ -934,6 +934,33 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 	return overlaps > 0, nil
 }
 
+func CreateDriver(lastName, names, license, address, postcode string, dob time.Time) (int, error) {
+
+	//Prepared statements
+	createDriver, err := conn.Prepare(`INSERT INTO drivers(lastName, names, licenseNumber, address, postcode, blackListed, dob)
+												VALUES(?, ?, ?, ?, ?, 0, ?)`)
+	if err != nil {
+		return 0, err
+	}
+	defer createDriver.Close()
+
+	res, err := createDriver.Exec(lastName, names, license, address, postcode, dob)
+	if err != nil {
+		return 0, err
+	}
+
+	driverID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	if driverID == 0 {
+		return 0, errors.New("no driver inserted")
+	}
+
+	return int(driverID), nil
+}
+
 func CreateBooking(carID, userID int, start, end, finish string, price float64, lateReturn, fullDay bool, bookingLength, cost float64) (int, error) {
 
 	//Prepared statements
