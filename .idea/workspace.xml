@@ -22,15 +22,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ad2caa87-5d71-4ae4-a425-c7d7c54bfea4" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ABIDataProvider/abiDataProvider.go" beforeDir="false" afterPath="$PROJECT_DIR$/ABIDataProvider/abiDataProvider.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DVLADataProvider/dvlaDataProvider.go" beforeDir="false" afterPath="$PROJECT_DIR$/DVLADataProvider/dvlaDataProvider.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/adminService/adminService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/adminService/adminService.go" afterDir="false" />
-    </list>
+    <list default="true" id="ad2caa87-5d71-4ae4-a425-c7d7c54bfea4" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -183,6 +175,10 @@
     </state>
     <state x="2145" y="133" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1612204107818" />
     <state x="2334" y="175" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1611156126333" />
+    <state x="2642" y="322" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1615070752491">
+      <screen x="1920" y="0" width="1920" height="1040" />
+    </state>
+    <state x="2642" y="322" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1615070752491" />
     <state width="1171" height="863" key="DebuggerActiveHint" timestamp="1614987704743">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
