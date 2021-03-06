@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+var (
+	BlackListedDriver = errors.New("driver is blackListed")
+)
+
 func GetBookingStatuses(token string) ([]*data.BookingStatusType, error) {
 
 	user, err := userService.GetUserFromSession(token)
@@ -268,33 +272,6 @@ func SetUser(token, userID, mode, value string) error {
 
 func VerifyDriver(token, dob, lastname, names, address, postcode, license, bookingID string, images data.ImageBundle) error {
 
-	user, err := userService.GetUserFromSession(token)
-	if err != nil {
-		return err
-	}
-
-	if !user.Admin {
-		return errors.New("user is not admin")
-	}
-
-	bookID, err := strconv.Atoi(bookingID)
-	if err != nil {
-		return err
-	}
-
-	booking, err := db.GetSingleBooking(bookID)
-	if err != nil {
-		return err
-	}
-
-	if booking.ProcessID != bookingService.BookingConfirmed {
-		return errors.New("booking has incorrect status")
-	}
-
-	if DVLADataProvider.IsInvalidLicense(license) {
-		return DVLADataProvider.InvalidLicense
-	}
-
 	dobUnix, err := strconv.ParseInt(dob, 10, 64)
 	if err != nil {
 		return err
@@ -302,12 +279,88 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 
 	dobTime := time.Unix(dobUnix, 0)
 
-	fraudulent, err := ABIDataProvider.HasFraudulentClaim(lastname, names, address, postcode, dobTime)
+	driverID, err := verifyDriver(token, lastname, names, address, postcode, license, bookingID, dobTime, images)
+	if err == BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
+		if driverID != 0 {
+			_, err = db.UpdateDriver(driverID, license, address, postcode, false, dobTime)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err = db.CreateDriver(lastname, names, license, address, postcode, dobTime)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	if err != nil {
 		return err
 	}
+
+}
+
+func verifyDriver(token, lastname, names, address, postcode, license, bookingID string, dob time.Time, images data.ImageBundle) (int, error) {
+
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return 0, err
+	}
+
+	if !user.Admin {
+		return 0, errors.New("user is not admin")
+	}
+
+	bookID, err := strconv.Atoi(bookingID)
+	if err != nil {
+		return 0, err
+	}
+
+	booking, err := db.GetSingleBooking(bookID)
+	if err != nil {
+		return 0, err
+	}
+
+	if booking.ProcessID != bookingService.BookingConfirmed {
+		return 0, errors.New("booking has incorrect status")
+	}
+
+	driver, err := db.GetDriverByName(lastname, names)
+	if err != nil {
+		return 0, err
+	}
+
+	driverID := 0
+	if driver != nil {
+		driverID = driver.ID
+
+		if driver.BlackListed {
+			return driver.ID, BlackListedDriver
+		}
+	}
+
+	if DVLADataProvider.IsInvalidLicense(license) {
+		return driverID, DVLADataProvider.InvalidLicense
+	}
+
+	fraudulent, err := ABIDataProvider.HasFraudulentClaim(lastname, names, address, postcode, dob)
+	if err != nil {
+		return 0, err
+	}
 	if fraudulent {
-		return ABIDataProvider.FraudulentClaim
+		return driverID, ABIDataProvider.FraudulentClaim
+	}
+
+	if driver != nil {
+		driverID, err = db.UpdateDriver(driver.ID, license, address, postcode, false, dob)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		driverID, err = db.CreateDriver(lastname, names, license, address, postcode, dob)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	noExtraDoc := false
@@ -322,25 +375,25 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 		document2ImageReader = strings.NewReader(images.Document2)
 	}
 
-	userID := strconv.Itoa(booking.UserID)
-	os.Mkdir("documents/"+userID+"/"+bookingID, os.ModePerm)
+	driverIDString := strconv.Itoa(driverID)
+	os.Mkdir("documents/"+driverIDString+"/"+bookingID, os.ModePerm)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	licenseFile, err := os.Create("documents/" + userID + "/" + bookingID + "/license.jpg")
+	licenseFile, err := os.Create("documents/" + driverIDString + "/" + bookingID + "/license.jpg")
 	if err != nil {
-		return err
+		return 0, err
 	}
-	document1File, err := os.Create("documents/" + userID + "/" + bookingID + "/document1.jpg")
+	document1File, err := os.Create("documents/" + driverIDString + "/" + bookingID + "/document1.jpg")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var document2File *os.File
 	if !noExtraDoc {
-		document2File, err = os.Create("documents/" + userID + "/" + bookingID + "/document2.jpg")
+		document2File, err = os.Create("documents/" + driverIDString + "/" + bookingID + "/document2.jpg")
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
@@ -355,9 +408,9 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 			document2File.Close()
 		}
 		if err != nil {
-			os.Remove("documents/" + userID + "/" + bookingID + "/license.jpg")
-			os.Remove("documents/" + userID + "/" + bookingID + "/document1.jpg")
-			os.Remove("documents/" + userID + "/" + bookingID + "/document2.jpg")
+			os.Remove("documents/" + driverIDString + "/" + bookingID + "/license.jpg")
+			os.Remove("documents/" + driverIDString + "/" + bookingID + "/document1.jpg")
+			os.Remove("documents/" + driverIDString + "/" + bookingID + "/document2.jpg")
 		}
 	}()
 
@@ -371,36 +424,36 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 
 	err = saveImage(licenseImageReader, licenseFile)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	err = saveImage(document1ImageReader, document1File)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if !noExtraDoc {
 		err = saveImage(document2ImageReader, document2File)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	status, err := db.GetBookingProcessStatus(bookID, booking.ProcessID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if status != nil && status.Active {
 		err := db.SetBookingStatus(status.ID, false)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	_, err = db.InsertBookingStatus(bookID, bookingService.CollectedBooking, user.ID, 1, 0.0, "admin progressed booking")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return 0, nil
 }
 
 func CreateCar(token, fuelType, gearType, carType, size, colour, seats, price, disabled, over25, description string, body io.Reader) error {

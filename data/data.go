@@ -81,6 +81,17 @@ type ImageBundle struct {
 	Document2 string `json:"document2"`
 }
 
+type Driver struct {
+	ID            int
+	LastName      string
+	Names         string
+	LicenseNumber string
+	Address       string
+	PostCode      string
+	BlackListed   bool
+	DOB           timestamp
+}
+
 type InsurerColumn struct {
 	ID          int
 	LastName    string

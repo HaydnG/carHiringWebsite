@@ -934,6 +934,45 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 	return overlaps > 0, nil
 }
 
+func GetDriverByName(lastName, names string) (*data.Driver, error) {
+
+	var dob time.Time
+
+	row := conn.QueryRow(`SELECT * from drivers where lastName = ? and names = ?`, lastName, names)
+
+	driver := &data.Driver{}
+
+	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	driver.DOB = *data.ConvertDate(dob)
+
+	return driver, nil
+}
+
+func GetDriverByID(ID int) (*data.Driver, error) {
+
+	var dob time.Time
+
+	row := conn.QueryRow(`SELECT * from drivers where id = ?`, ID)
+
+	driver := &data.Driver{}
+
+	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob)
+	if err != nil {
+		return nil, err
+	}
+
+	driver.DOB = *data.ConvertDate(dob)
+
+	return driver, nil
+}
+
 func CreateDriver(lastName, names, license, address, postcode string, dob time.Time) (int, error) {
 
 	//Prepared statements
@@ -956,6 +995,50 @@ func CreateDriver(lastName, names, license, address, postcode string, dob time.T
 
 	if driverID == 0 {
 		return 0, errors.New("no driver inserted")
+	}
+
+	return int(driverID), nil
+}
+
+func BlackListedDriver(id int) error {
+	result, err := conn.Exec("update driver set blackListed = ? where id = ?",
+		true, id)
+	if err != nil {
+		return err
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("no rows affected")
+	}
+
+	return nil
+}
+
+func UpdateDriver(id int, licenseNumber, address, postcode string, blackListed bool, dob time.Time) (int, error) {
+
+	//Prepared statements
+	updateDriver, err := conn.Prepare(`update drivers set licenseNumber = ?, address = ?, postcode = ?, blackListed = ?, dob = ? WHERE id  = ?`)
+	if err != nil {
+		return 0, err
+	}
+	defer updateDriver.Close()
+
+	res, err := updateDriver.Exec(licenseNumber, address, postcode, blackListed, dob, id)
+	if err != nil {
+		return 0, err
+	}
+
+	driverID, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	if driverID == 0 {
+		return 0, errors.New("no driver updated")
 	}
 
 	return int(driverID), nil
