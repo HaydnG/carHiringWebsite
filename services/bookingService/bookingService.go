@@ -319,6 +319,33 @@ func MakeExtensionPayment(token, bookingID string) error {
 	return nil
 }
 
+func GetDriver(token, driverID string) (*data.Driver, error) {
+	user, err := userService.GetUserFromSession(token)
+	if err != nil {
+		return nil, err
+	}
+
+	driverIDValid, err := strconv.Atoi(driverID)
+	if err != nil {
+		return nil, err
+	}
+
+	related, err := db.UserDriverRelated(user.ID, driverIDValid)
+	if err != nil {
+		return nil, err
+	}
+	if !related {
+		return nil, errors.New("user and driver not related")
+	}
+
+	driver, err := db.GetDriverByID(driverIDValid)
+	if err != nil {
+		return nil, err
+	}
+
+	return driver, nil
+}
+
 func GetUsersBookings(token string) (map[int][]*data.Booking, error) {
 	user, err := userService.GetUserFromSession(token)
 	if err != nil {

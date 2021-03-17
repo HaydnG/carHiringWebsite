@@ -934,6 +934,19 @@ INNER JOIN (SELECT bookings.id,processtype.id as pid,processtype.description FRO
 	return overlaps > 0, nil
 }
 
+func UserDriverRelated(userID, driverID int) (bool, error) {
+
+	row := conn.QueryRow(`SELECT count(*) FROM carrental.bookings where userID = ? and driverID = ?;`, userID, driverID)
+	relations := 0
+
+	err := row.Scan(&relations)
+	if err != nil {
+		return false, err
+	}
+
+	return relations > 0, nil
+}
+
 func GetDriverByName(lastName, names string) (*data.Driver, error) {
 
 	var dob time.Time
@@ -942,7 +955,7 @@ func GetDriverByName(lastName, names string) (*data.Driver, error) {
 
 	driver := &data.Driver{}
 
-	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob)
+	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob, &driver.Reason)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -963,7 +976,7 @@ func GetDriverByID(ID int) (*data.Driver, error) {
 
 	driver := &data.Driver{}
 
-	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob)
+	err := row.Scan(&driver.ID, &driver.LastName, &driver.Names, &driver.LicenseNumber, &driver.Address, &driver.PostCode, &driver.BlackListed, &dob, &driver.Reason)
 	if err != nil {
 		return nil, err
 	}
@@ -973,17 +986,17 @@ func GetDriverByID(ID int) (*data.Driver, error) {
 	return driver, nil
 }
 
-func CreateDriver(lastName, names, license, address, postcode string, blackListed bool, dob time.Time) (int, error) {
+func CreateDriver(lastName, names, license, address, postcode string, blackListed bool, dob time.Time, reason string) (int, error) {
 
 	//Prepared statements
-	createDriver, err := conn.Prepare(`INSERT INTO drivers(lastName, names, licenseNumber, address, postcode, blackListed, dob)
-												VALUES(?, ?, ?, ?, ?, ?, ?)`)
+	createDriver, err := conn.Prepare(`INSERT INTO drivers(lastName, names, licenseNumber, address, postcode, blackListed, dob, reason)
+												VALUES(?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return 0, err
 	}
 	defer createDriver.Close()
 
-	res, err := createDriver.Exec(lastName, names, license, address, postcode, blackListed, dob)
+	res, err := createDriver.Exec(lastName, names, license, address, postcode, blackListed, dob, reason)
 	if err != nil {
 		return 0, err
 	}
@@ -1019,7 +1032,7 @@ func AddBookingDriver(bookingID, driverID int) error {
 }
 
 func BlackListedDriver(id int) error {
-	result, err := conn.Exec("update driver set blackListed = ? where id = ?",
+	result, err := conn.Exec("update drivers set blackListed = ? where id = ?",
 		true, id)
 	if err != nil {
 		return err
@@ -1030,7 +1043,7 @@ func BlackListedDriver(id int) error {
 		return err
 	}
 	if count == 0 {
-		return errors.New("no rows affected")
+		return nil
 	}
 
 	return nil

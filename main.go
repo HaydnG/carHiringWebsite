@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -97,6 +98,7 @@ func main() {
 	http.HandleFunc("/bookingService/editBooking", editBookingHandler)
 	http.HandleFunc("/bookingService/extendBooking", extendBookingHandler)
 	http.HandleFunc("/bookingService/payExtension", payExtensionHandler)
+	http.HandleFunc("/bookingService/getDriver", getDriverHandler)
 
 	http.HandleFunc("/adminService/getBookingStats", getBookingStatsHandler)
 	http.HandleFunc("/adminService/getUserStats", getUserStatsHandler)
@@ -136,6 +138,15 @@ func main() {
 
 func SiteHandler(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("SiteHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
 	paths := strings.Split(r.RequestURI, "/")
 	if len(paths) >= 0 {
 		if strings.Compare(paths[1], "cars") == 0 {
@@ -143,6 +154,71 @@ func SiteHandler(w http.ResponseWriter, r *http.Request) {
 			r.URL.Path = paths[2]
 			enableCors(&w)
 			carFileServe := http.FileServer(http.Dir("./cars"))
+			carFileServe.ServeHTTP(w, r)
+			return
+		}
+		if strings.Compare(paths[1], "documents") == 0 {
+
+			var (
+				token *http.Cookie
+				user  *data.User
+			)
+			token, err = r.Cookie("session-token")
+			if err != nil {
+				return
+			}
+
+			user, err = userService.GetUserFromSession(token.Value)
+			if err != nil {
+				return
+			}
+
+			if !user.Admin {
+				var (
+					driverID  int
+					related   bool
+					bookingID int
+					booking   *data.Booking
+				)
+
+				driverID, err = strconv.Atoi(paths[2])
+				if err != nil {
+					return
+				}
+
+				related, err = db.UserDriverRelated(user.ID, driverID)
+				if err != nil {
+					return
+				}
+				if !related {
+					err = errors.New("user and driver not related")
+					return
+				}
+
+				bookingID, err = strconv.Atoi(paths[3])
+				if err != nil {
+					return
+				}
+				booking, err = db.GetSingleBooking(bookingID)
+				if err != nil {
+					return
+				}
+
+				if booking.UserID != user.ID {
+					err = errors.New("not authorised to view these documents")
+					return
+				}
+				if int(booking.DriverID.Int32) != driverID {
+					err = errors.New("incorrect driver id")
+					return
+				}
+
+			}
+
+			r.RequestURI = strings.Join(paths[2:], "/")
+			r.URL.Path = strings.Join(paths[2:], "/")
+			enableCors(&w)
+			carFileServe := http.FileServer(http.Dir("./documents"))
 			carFileServe.ServeHTTP(w, r)
 			return
 		}
@@ -162,7 +238,7 @@ func verifyDriverUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		if err == adminService.BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
-			w.Write([]byte(err.Error()))
+			return
 		} else if err != nil {
 			log.Printf("verifyDriverUserHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -204,6 +280,11 @@ func verifyDriverUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = adminService.VerifyDriver(token.Value, dob, lastname, names, address, postcode, license, bookingID, images)
+	if err == adminService.BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
+		w.Write([]byte(`"` + err.Error() + `"`))
+		return
+	}
+
 	if err != nil {
 		return
 	}
@@ -1061,6 +1142,48 @@ func editBookingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(200)
+}
+
+func getDriverHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("getDriverHandler error - err: %v\nurl:%v\ncookies: %+v\n", err, r.URL, r.Cookies())
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		err = errors.New("incorrect http method")
+		return
+	}
+
+	driverID := r.FormValue("driverID")
+	if driverID == "" {
+		err = errors.New("incorrect parameters")
+		return
+	}
+
+	token, err := r.Cookie("session-token")
+	if err != nil {
+		return
+	}
+
+	if len(token.Value) == 0 {
+		err = errors.New("incorrect parameters")
+		return
+	}
+	response, err := bookingService.GetDriver(token.Value, driverID)
+	if err != nil {
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.Encode(&response)
+	w.Write(buffer.Bytes())
 }
 
 func getExtensionDaysHandler(w http.ResponseWriter, r *http.Request) {

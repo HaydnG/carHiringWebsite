@@ -5,6 +5,7 @@ import (
 	"carHiringWebsite/DVLADataProvider"
 	"carHiringWebsite/data"
 	"carHiringWebsite/db"
+	"carHiringWebsite/emailService"
 	"carHiringWebsite/services/bookingService"
 	"carHiringWebsite/services/userService"
 	"carHiringWebsite/session"
@@ -12,6 +13,7 @@ import (
 	"errors"
 	"image/jpeg"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -163,6 +165,13 @@ func GetBooking(token, bookingID string) (*data.AdminBooking, error) {
 	}
 	adminBooking.User = data.NewOutputUser(user)
 
+	if adminBooking.Booking.DriverID.Int32 != 0 {
+		adminBooking.Booking.Driver, err = db.GetDriverByID(int(adminBooking.Booking.DriverID.Int32))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return adminBooking, nil
 }
 
@@ -279,20 +288,46 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 
 	dobTime := time.Unix(dobUnix, 0)
 
-	driverID, err := verifyDriver(token, lastname, names, address, postcode, license, bookingID, dobTime, images)
-	if err == BlackListedDriver || err == DVLADataProvider.InvalidLicense || err == ABIDataProvider.FraudulentClaim {
+	var verifyError error
+	driverID, verifyError := verifyDriver(token, lastname, names, address, postcode, license, bookingID, dobTime, images)
+	if verifyError == BlackListedDriver || verifyError == DVLADataProvider.InvalidLicense || verifyError == ABIDataProvider.FraudulentClaim {
 		if driverID != 0 {
 			err = db.BlackListedDriver(driverID)
 			if err != nil {
 				return err
 			}
 		} else {
-			_, err = db.CreateDriver(lastname, names, license, address, postcode, true, dobTime)
+			driverID, err = db.CreateDriver(lastname, names, license, address, postcode, true, dobTime, verifyError.Error())
 			if err != nil {
 				return err
 			}
 		}
-		return err
+
+		if verifyError == DVLADataProvider.InvalidLicense {
+
+			go func() {
+				var emailError error
+
+				defer func() {
+					if emailError != nil {
+						log.Printf("SendEmail error - err: %v", err)
+					}
+				}()
+
+				driver, emailError := db.GetDriverByID(driverID)
+				if err != nil {
+					return
+				}
+				if driver == nil {
+					emailError = errors.New("driver is nil")
+					return
+				}
+
+				emailError = emailService.SendEmail(driver)
+			}()
+
+		}
+		return verifyError
 	}
 
 	if err != nil {
@@ -305,14 +340,14 @@ func VerifyDriver(token, dob, lastname, names, address, postcode, license, booki
 
 func verifyDriver(token, lastname, names, address, postcode, license, bookingID string, dob time.Time, images data.ImageBundle) (int, error) {
 
-	user, err := userService.GetUserFromSession(token)
-	if err != nil {
-		return 0, err
-	}
-
-	if !user.Admin {
-		return 0, errors.New("user is not admin")
-	}
+	//user, err := userService.GetUserFromSession(token)
+	//if err != nil {
+	//	return 0, err
+	//}
+	//
+	//if !user.Admin {
+	//	return 0, errors.New("user is not admin")
+	//}
 
 	bookID, err := strconv.Atoi(bookingID)
 	if err != nil {
@@ -354,6 +389,9 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 		driverID = driver.ID
 
 		if driver.BlackListed {
+			if driver.Reason == DVLADataProvider.InvalidLicense.Error() {
+				return driver.ID, DVLADataProvider.InvalidLicense
+			}
 			return driver.ID, BlackListedDriver
 		}
 	}
@@ -371,7 +409,7 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 	}
 
 	if driver == nil {
-		driverID, err = db.CreateDriver(lastname, names, license, address, postcode, false, dob)
+		driverID, err = db.CreateDriver(lastname, names, license, address, postcode, false, dob, "")
 		if err != nil {
 			return 0, err
 		}
@@ -454,7 +492,7 @@ func verifyDriver(token, lastname, names, address, postcode, license, bookingID 
 		}
 	}
 
-	_, err = db.InsertBookingStatus(bookID, bookingService.CollectedBooking, user.ID, 1, 0.0, "admin progressed booking")
+	_, err = db.InsertBookingStatus(bookID, bookingService.CollectedBooking, 1, 1, 0.0, "admin progressed booking")
 	if err != nil {
 		return 0, err
 	}

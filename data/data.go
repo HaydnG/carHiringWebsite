@@ -74,6 +74,7 @@ type Booking struct {
 	ActiveStatuses       []*BookingStatusType `json:"activeStatuses"`
 	PerDay               float64              `json:"perDay"`
 	DriverID             sql.NullInt32
+	Driver               *Driver `json:"driver"`
 }
 type ImageBundle struct {
 	License   string `json:"license"`
@@ -90,6 +91,7 @@ type Driver struct {
 	PostCode      string
 	BlackListed   bool
 	DOB           timestamp
+	Reason        string
 }
 
 type InsurerColumn struct {

@@ -53,7 +53,7 @@ func LoadCSVData() error {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 
 	var modTime time.Time
