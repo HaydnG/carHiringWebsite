@@ -23,29 +23,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ad2caa87-5d71-4ae4-a425-c7d7c54bfea4" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-bad-driver/admin-bad-driver.component.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/driver-card/driver-card.component.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/emailService/emailService.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ABIfiles/ABI_DRIVER_FRAUD.accdb" beforeDir="false" afterPath="$PROJECT_DIR$/ABIfiles/ABI_DRIVER_FRAUD.accdb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ABIfiles/ABI_DRIVER_FRAUD.laccdb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/DVLADataProvider/dvlaDataProvider.go" beforeDir="false" afterPath="$PROJECT_DIR$/DVLADataProvider/dvlaDataProvider.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-booking-view-page/admin-booking-view-page.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-booking-view-page/admin-booking-view-page.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-validate-driver/admin-validate-driver.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/admin-validate-driver/admin-validate-driver.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/app.module.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-card/booking-card.component.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/booking-card/booking-card.component.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/admin/admin.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/admin/admin.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/Booking.ts" beforeDir="false" afterPath="$PROJECT_DIR$/carHiringWebsite-Frontend/src/app/services/booking/Booking.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/data.go" beforeDir="false" afterPath="$PROJECT_DIR$/data/data.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/3rdpartylicenses.txt" beforeDir="false" afterPath="$PROJECT_DIR$/public/3rdpartylicenses.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/public/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/main.4fab9e6ea6e1b932f765.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/public/polyfills.4f1f0997b4bb8c9aa268.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/adminService/adminService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/adminService/adminService.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/bookingService/bookingService.go" beforeDir="false" afterPath="$PROJECT_DIR$/services/bookingService/bookingService.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/emailService/emailService.go" beforeDir="false" afterPath="$PROJECT_DIR$/emailService/emailService.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

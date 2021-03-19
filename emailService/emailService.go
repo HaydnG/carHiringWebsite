@@ -19,6 +19,9 @@ func SendEmail(driver *data.Driver) error {
 
 	string := fmt.Sprintf("DVLA Offense Alert\n\n"+
 		"Company: Banger\n"+
+		"Company Reference Number: 4Uv5axPVhqkdTeC\n"+
+		"Office Branch Location: Stoke-On-Trent\n\n"+
+		"Offender --------------\n"+
 		"LicenseNumber: %s\n"+
 		"Name: %s %s\n"+
 		"DateTime of Occurence: %s", driver.LicenseNumber, driver.LastName, driver.Names, time.Now().Format("2006-01-02 15:04:05"))
