@@ -1,0 +1,10 @@
+DVLA Offense Alert
+
+Company: Banger
+Company Reference Number: 4Uv5axPVhqkdTeC
+Office Branch Location: Stoke-On-Trent
+
+Offender --------------
+LicenseNumber: DUCKO504067DD7UM
+Name: gynn haydn gynn
+DateTime of Occurence: 2021-04-21 19:40:40
