@@ -90,6 +90,7 @@ func LoadCSVData() error {
 	}
 
 	csvLock.Lock()
+	csvData = make(map[string]int)
 	for {
 		rec, err := reader.Read()
 		if err != nil {
